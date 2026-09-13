@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowRight,
+  ArrowLeft,
   ArrowUpRight,
   Plus,
   Plane,
@@ -18,7 +19,7 @@ import {
   money,
   photo,
 } from "./types";
-import { useScrollScene } from "./useScrollScene";
+import { useScrollScene, scrollToJourney } from "./useScrollScene";
 
 type Props = {
   travels: Travel[];
@@ -42,6 +43,7 @@ export default function Overview({
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [activeStop, setActiveStop] = useState(0);
+  const [activeJourney, setActiveJourney] = useState(0);
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = travels
     .filter(
@@ -53,7 +55,7 @@ export default function Overview({
   const stops = (featured?.stops || []).slice(0, 4);
   const current = Math.min(activeStop, Math.max(stops.length - 1, 0));
   const revision = `${featured?.id}:${featured?.version}:${stops.length}:${others.length}`;
-  useScrollScene(root, revision, setActiveStop);
+  useScrollScene(root, revision, setActiveStop, setActiveJourney);
   const edition = new Intl.DateTimeFormat("en-US", {
     month: "long",
     year: "numeric",
@@ -74,7 +76,10 @@ export default function Overview({
   }
 
   return (
-    <div className="editorial-overview" ref={root}>
+    <div className="editorial-overview kinetic-atlas" ref={root}>
+      <div className="reading-meter" aria-hidden="true">
+        <i />
+      </div>
       <section
         className="dispatch-opening"
         data-sc-act="flow"
@@ -86,7 +91,8 @@ export default function Overview({
         </div>
         <div className="dispatch-title-row">
           <h1 id="desk-title">
-            The departure <br />
+            <span className="title-first">The departure </span>
+            <br />
             <em>desk.</em>
             <span className="title-period" aria-hidden="true">
               *
@@ -109,93 +115,135 @@ export default function Overview({
           </div>
         </div>
         {featured ? (
-          <div className="dispatch-cover-wrap">
-            <article className="dispatch-cover" aria-label={featured.title}>
-              <div className="cover-photograph">
-                <img
-                  src={photo(featured.image)}
-                  alt={`${featured.stops[0]?.country || "Travel"} destination photograph`}
-                  width="1600"
-                  height="1000"
-                  fetchPriority="high"
-                />
+          <div className="launch-runway" data-flight>
+            <div className="launch-stage">
+              <div className="launch-ground" aria-hidden="true">
+                <span>{featured.stops[0]?.country || "Elsewhere"}</span>
+                <svg viewBox="0 0 1000 700">
+                  <ellipse cx="500" cy="350" rx="460" ry="300" />
+                  <ellipse cx="500" cy="350" rx="350" ry="300" />
+                  <ellipse cx="500" cy="350" rx="180" ry="300" />
+                  <path d="M40 350H960M100 170H900M100 530H900" />
+                </svg>
               </div>
-              <div className="cover-corner" aria-hidden="true" />
-              <div className="cover-copy">
-                <span>
-                  {upcoming.length
-                    ? "NEXT ON THE HORIZON"
-                    : "FROM YOUR SAVED PLANS"}
-                </span>
-                <h2>{featured.title}</h2>
-                <button onClick={() => onOpen(featured)}>
-                  Explore itinerary <ArrowUpRight size={20} />
-                </button>
-              </div>
-              <div className="cover-location">
-                <MapPin size={14} />
-                {featured.stops.map((s) => s.destination).join(" / ")}
-              </div>
-              <div className="cover-seal" aria-hidden="true">
-                <span>MADE FOR</span>
-                <Compass size={34} strokeWidth={1} />
-                <span>GOING PLACES</span>
-              </div>
-            </article>
-            <div className="departure-ticket-plane">
-              <aside className="departure-ticket">
-                <div className="ticket-top">
-                  <span>YOUR NEXT CHAPTER</span>
-                  <Plane size={17} />
-                </div>
-                <div className="ticket-date">
-                  <strong>
-                    {date(featured.start_date, { day: "2-digit" })}
-                  </strong>
-                  <span>
-                    {date(featured.start_date, { month: "short" })}
-                    <small>
-                      {date(featured.start_date, { year: "numeric" })}
-                    </small>
-                  </span>
-                </div>
-                <div className="ticket-destination">
-                  <strong>{featured.stops[0]?.country}</strong>
-                  <span>
-                    {featured.duration} days, {featured.stops.length}{" "}
-                    {featured.stops.length === 1
-                      ? "destination"
-                      : "destinations"}
-                  </span>
-                </div>
-                <div className="ticket-perforation" />
-                <div className="ticket-bottom">
-                  <span>
-                    TRAVELLERS
-                    <strong>
-                      {featured.participantIds.length}
-                      <i> / {featured.capacity}</i>
-                    </strong>
-                  </span>
-                  <button
-                    aria-label={`View travel details for ${featured.title}`}
-                    onClick={() => onOpen(featured)}
+              <button
+                className="launch-skip"
+                onClick={() =>
+                  root.current
+                    ?.querySelector(".journey-reader")
+                    ?.scrollIntoView({ behavior: "instant", block: "start" })
+                }
+              >
+                Go to the itinerary <ArrowUpRight size={16} />
+              </button>
+              <div className="dispatch-cover-wrap">
+                <article className="dispatch-cover" aria-label={featured.title}>
+                  <div className="cover-photograph">
+                    <img
+                      src={photo(featured.image)}
+                      alt={`${featured.stops[0]?.country || "Travel"} destination photograph`}
+                      width="1600"
+                      height="1000"
+                      fetchPriority="high"
+                    />
+                  </div>
+                  <div className="cover-corner" aria-hidden="true" />
+                  <svg
+                    className="flight-sketch"
+                    viewBox="0 0 1200 600"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
                   >
-                    <ArrowUpRight size={24} />
-                  </button>
+                    <path
+                      className="flight-trail-ground"
+                      d="M90 360 C290 20 710 20 1010 240"
+                    />
+                    <path
+                      className="flight-trail"
+                      pathLength="1"
+                      d="M90 360 C290 20 710 20 1010 240"
+                    />
+                    <g className="flight-plane">
+                      <path d="M-14 0 L14 0 M2 -13 L14 0 L2 13" />
+                    </g>
+                  </svg>
+                  <div className="cover-copy">
+                    <span>
+                      {upcoming.length
+                        ? "NEXT ON THE HORIZON"
+                        : "FROM YOUR SAVED PLANS"}
+                    </span>
+                    <h2>{featured.title}</h2>
+                    <button onClick={() => onOpen(featured)}>
+                      Explore itinerary <ArrowUpRight size={20} />
+                    </button>
+                  </div>
+                  <div className="cover-location">
+                    <MapPin size={14} />
+                    {featured.stops.map((s) => s.destination).join(" / ")}
+                  </div>
+                  <div className="cover-seal" aria-hidden="true">
+                    <span>MADE FOR</span>
+                    <Compass size={34} strokeWidth={1} />
+                    <span>GOING PLACES</span>
+                  </div>
+                </article>
+                <div className="departure-ticket-plane">
+                  <aside className="departure-ticket">
+                    <div className="ticket-top">
+                      <span>YOUR NEXT CHAPTER</span>
+                      <Plane size={17} />
+                    </div>
+                    <div className="ticket-date">
+                      <strong>
+                        {date(featured.start_date, { day: "2-digit" })}
+                      </strong>
+                      <span>
+                        {date(featured.start_date, { month: "short" })}
+                        <small>
+                          {date(featured.start_date, { year: "numeric" })}
+                        </small>
+                      </span>
+                    </div>
+                    <div className="ticket-destination">
+                      <strong>{featured.stops[0]?.country}</strong>
+                      <span>
+                        {featured.duration} days, {featured.stops.length}{" "}
+                        {featured.stops.length === 1
+                          ? "destination"
+                          : "destinations"}
+                      </span>
+                    </div>
+                    <div className="ticket-perforation" />
+                    <div className="ticket-bottom">
+                      <span>
+                        TRAVELLERS
+                        <strong>
+                          {featured.participantIds.length}
+                          <i> / {featured.capacity}</i>
+                        </strong>
+                      </span>
+                      <button
+                        aria-label={`View travel details for ${featured.title}`}
+                        onClick={() => onOpen(featured)}
+                      >
+                        <ArrowUpRight size={24} />
+                      </button>
+                    </div>
+                    <div className="ticket-barcode" aria-hidden="true" />
+                    <span className="ticket-reference">
+                      TP / {featured.id.slice(-6).toUpperCase()}
+                    </span>
+                  </aside>
                 </div>
-                <div className="ticket-barcode" aria-hidden="true" />
-                <span className="ticket-reference">
-                  TP / {featured.id.slice(-6).toUpperCase()}
-                </span>
-              </aside>
-            </div>
-            <div className="cover-caption">
-              <span>Consider this your out-of-office inspiration.</span>
-              <span>
-                {featured.stops[0]?.country} · {date(featured.start_date)}—
-                {date(featured.end_date)}
-              </span>
+                <div className="cover-caption">
+                  <span>Consider this your out-of-office inspiration.</span>
+                  <span>
+                    {featured.stops[0]?.country} · {date(featured.start_date)} –
+                    {date(featured.end_date)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -258,6 +306,18 @@ export default function Overview({
         ))}
       </section>
 
+      {stops.length > 0 && (
+        <div className="destination-ticker" data-ticker aria-hidden="true">
+          <div>
+            {[...stops, ...stops].map((stop, index) => (
+              <span key={index}>
+                {stop.destination}
+                <i>✳</i>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       {featured && stops.length > 0 && (
         <section
           className="journey-reader"
@@ -279,6 +339,9 @@ export default function Overview({
           </div>
           <div className="reader-layout">
             <div className="route-bookmark">
+              <span className="bookmark-folio" aria-hidden="true">
+                {String(current + 1).padStart(2, "0")}
+              </span>
               <div className="bookmark-photo">
                 {stops.map((stop, index) => {
                   const name = stop.destination.toLowerCase();
@@ -405,73 +468,131 @@ export default function Overview({
         aria-labelledby="collection-title"
         data-sc-act="flow"
       >
-        <div className="collection-heading">
-          <h2 id="collection-title">
-            Still on your <em>mind.</em>
-          </h2>
-          <div>
-            <p>A few more places in the making.</p>
-            <button className="text-link" onClick={onPlans}>
-              All travel plans <ArrowUpRight size={18} />
-            </button>
+        <div className="collection-runway" data-rail>
+          <div className="collection-stage">
+            <div className="collection-heading">
+              <h2 id="collection-title">
+                Still on your <em>mind.</em>
+              </h2>
+              <div>
+                <p>A few more places in the making.</p>
+                <button className="text-link" onClick={onPlans}>
+                  All travel plans <ArrowUpRight size={18} />
+                </button>
+              </div>
+            </div>
+            <div
+              className="collection-window"
+              tabIndex={0}
+              aria-label="Saved journeys gallery"
+            >
+              <div className="editorial-journeys">
+                {others.map((travel, index) => (
+                  <article
+                    className="editorial-journey"
+                    key={travel.id}
+                    data-journey-card={index}
+                  >
+                    <button
+                      className="journey-portrait"
+                      onClick={() => onOpen(travel)}
+                      aria-label={`Explore ${travel.title}`}
+                    >
+                      <img
+                        src={photo(travel.image)}
+                        alt={`${travel.stops[0]?.country || "Travel"} destination`}
+                        width="800"
+                        height="1000"
+                        loading="lazy"
+                      />
+                      <span className="portrait-arrow">
+                        <ArrowUpRight size={23} />
+                      </span>
+                      <span className="portrait-duration">
+                        {travel.duration} DAYS AWAY
+                      </span>
+                    </button>
+                    <div className="editorial-journey-meta">
+                      <span>{travel.stops[0]?.country}</span>
+                      <span
+                        className={"status-dot " + travel.status.toLowerCase()}
+                      >
+                        {travel.status.toLowerCase()}
+                      </span>
+                    </div>
+                    <h3>
+                      <button onClick={() => onOpen(travel)}>
+                        {travel.title}
+                      </button>
+                    </h3>
+                    <div className="editorial-journey-foot">
+                      <span>{date(travel.start_date)}</span>
+                      <span>
+                        {money(travel.price)} <small>/ person</small>
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+            {others.length > 0 && (
+              <div className="collection-navigation">
+                <span>
+                  {String(Math.min(activeJourney + 1, others.length)).padStart(
+                    2,
+                    "0",
+                  )}{" "}
+                  <i>/</i> {String(others.length).padStart(2, "0")} saved
+                  journeys
+                </span>
+                <div className="collection-progress" aria-hidden="true">
+                  <i />
+                </div>
+                <div className="collection-arrows">
+                  <button
+                    aria-label="Previous saved journey"
+                    disabled={activeJourney === 0}
+                    onClick={() =>
+                      scrollToJourney(root.current, activeJourney - 1)
+                    }
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <button
+                    aria-label="Next saved journey"
+                    disabled={activeJourney >= others.length - 1}
+                    onClick={() =>
+                      scrollToJourney(root.current, activeJourney + 1)
+                    }
+                  >
+                    <ArrowRight size={20} />
+                  </button>
+                </div>
+              </div>
+            )}
+            {!others.length && (
+              <p className="collection-empty">
+                Your next saved journey will appear here.
+              </p>
+            )}
           </div>
         </div>
-        <div className="editorial-journeys">
-          {others.map((travel, index) => (
-            <article
-              className="editorial-journey journey-card"
-              key={travel.id}
-              data-sc-in
-              style={
-                { "--reveal-delay": `${index * 90}ms` } as React.CSSProperties
-              }
-            >
-              <button
-                className="journey-portrait"
-                onClick={() => onOpen(travel)}
-                aria-label={`Explore ${travel.title}`}
-              >
-                <img
-                  src={photo(travel.image)}
-                  alt={`${travel.stops[0]?.country || "Travel"} destination`}
-                  width="800"
-                  height="1000"
-                  loading="lazy"
-                />
-                <span className="portrait-arrow">
-                  <ArrowUpRight size={23} />
-                </span>
-                <span className="portrait-duration">
-                  {travel.duration} DAYS AWAY
-                </span>
-              </button>
-              <div className="editorial-journey-meta">
-                <span>{travel.stops[0]?.country}</span>
-                <span className={"status-dot " + travel.status.toLowerCase()}>
-                  {travel.status.toLowerCase()}
-                </span>
-              </div>
-              <h3>
-                <button onClick={() => onOpen(travel)}>{travel.title}</button>
-              </h3>
-              <div className="editorial-journey-foot">
-                <span>{date(travel.start_date)}</span>
-                <span>
-                  {money(travel.price)} <small>/ person</small>
-                </span>
-              </div>
-            </article>
-          ))}
-        </div>
-        {!others.length && (
-          <p className="collection-empty">
-            Your next saved journey will appear here.
-          </p>
-        )}
       </section>
 
       <section className="desk-close" data-sc-act="flow">
-        <div>
+        {featured && (
+          <div className="closing-orbit" aria-hidden="true">
+            <div>
+              <img src={photo(featured.image)} alt="" loading="lazy" />
+            </div>
+            <svg viewBox="0 0 300 300">
+              <circle cx="150" cy="150" r="146" />
+              <circle cx="150" cy="150" r="130" strokeDasharray="1 12" />
+              <path d="M150 0V35M150 265V300M0 150H35M265 150H300" />
+            </svg>
+          </div>
+        )}
+        <div className="closing-copy">
           <span className="closing-star" aria-hidden="true">
             ✳
           </span>

@@ -44,11 +44,8 @@ await page
   .getByRole("heading", { name: "The departure desk.", exact: true })
   .waitFor();
 await page.evaluate(() => document.fonts.ready);
-for (const item of await page.locator(".editorial-journey").all()) {
-  await item.scrollIntoViewIfNeeded();
-  await settle();
-}
 await page.evaluate(async () => {
+  for (const image of document.images) image.loading = "eager";
   await Promise.all(
     [...document.images].map((i) => i.decode().catch(() => {})),
   );
@@ -56,17 +53,53 @@ await page.evaluate(async () => {
 });
 await page.waitForTimeout(900);
 await shot("dashboard-desktop");
-await shot("dashboard-full", true);
 const transform = (selector) =>
   page.locator(selector).evaluate((el) => getComputedStyle(el).transform);
 const first = await transform(".cover-photograph"),
   ticketFirst = await transform(".departure-ticket-plane");
-await page.evaluate(() => window.scrollTo({ top: 340, behavior: "instant" }));
-await settle();
+async function sceneAt(selector, progress, stageSelector) {
+  await page.locator(selector).evaluate(
+    (el, { progress, stageSelector }) => {
+      const stage = el.querySelector(stageSelector);
+      window.scrollTo({
+        top:
+          el.getBoundingClientRect().top +
+          scrollY -
+          22 +
+          Math.max(0, el.offsetHeight - stage.offsetHeight) * progress,
+        behavior: "instant",
+      });
+    },
+    { progress, stageSelector },
+  );
+  await page.waitForTimeout(180);
+}
+await sceneAt(".launch-runway", 0.12, ".launch-stage");
+const frameStart = await transform(".dispatch-cover");
+const strokeStart = await page
+  .locator(".flight-trail")
+  .evaluate((el) => getComputedStyle(el).strokeDashoffset);
+await shot("launch-entry");
+await sceneAt(".launch-runway", 0.85, ".launch-stage");
+assert.notEqual(frameStart, await transform(".dispatch-cover"));
+assert.notEqual(
+  strokeStart,
+  await page
+    .locator(".flight-trail")
+    .evaluate((el) => getComputedStyle(el).strokeDashoffset),
+);
 assert.notEqual(first, await transform(".cover-photograph"));
 assert.notEqual(ticketFirst, await transform(".departure-ticket-plane"));
-await page.waitForTimeout(950);
 await shot("scroll-cover");
+const launchBox = await page.locator(".launch-stage").boundingBox();
+const tiltStart = await transform(".dispatch-cover-wrap");
+await page.mouse.move(
+  launchBox.x + launchBox.width * 0.85,
+  launchBox.y + launchBox.height * 0.3,
+);
+await page.waitForTimeout(100);
+assert.notEqual(tiltStart, await transform(".dispatch-cover-wrap"));
+await page.mouse.move(1, 1);
 for (const [index, name] of [
   [0, "Ubud"],
   [1, "Uluwatu"],
@@ -92,16 +125,87 @@ assert.equal(
   await page.locator(".bookmark-photo-caption strong").innerText(),
   "Ubud",
 );
+await sceneAt(".collection-runway", 0, ".collection-stage");
+const railStart = await transform(".editorial-journeys");
+await shot("gallery-start");
+await sceneAt(".collection-runway", 0.95, ".collection-stage");
+assert.notEqual(railStart, await transform(".editorial-journeys"));
+await shot("gallery-end");
+await sceneAt(".collection-runway", 0, ".collection-stage");
+await page.locator("[data-journey-card='0'] .journey-portrait").focus();
+for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+await page.waitForFunction(() => {
+  const card = document
+    .querySelector("[data-journey-card='2'] .journey-portrait")
+    .getBoundingClientRect();
+  const viewport = document
+    .querySelector(".collection-window")
+    .getBoundingClientRect();
+  return card.left >= viewport.left && card.right <= viewport.right;
+});
+const visibleCard = await page
+  .locator("[data-journey-card='2'] .journey-portrait")
+  .boundingBox();
+const railWindow = await page.locator(".collection-window").boundingBox();
+assert(
+  visibleCard.x >= railWindow.x - 5 &&
+    visibleCard.x + visibleCard.width <= railWindow.x + railWindow.width + 5,
+  "Keyboard focus must reveal the last gallery plan: " +
+    JSON.stringify({
+      visibleCard,
+      railWindow,
+      state: await page.evaluate(() => ({
+        scrollY,
+        active: document.activeElement?.outerHTML.slice(0, 100),
+        p: document
+          .querySelector("[data-rail]")
+          .style.getPropertyValue("--rail-progress"),
+      })),
+    }),
+);
+await page
+  .getByRole("button", { name: "Previous saved journey", exact: true })
+  .click();
+await page.waitForTimeout(900);
+await page
+  .getByRole("button", { name: "Next saved journey", exact: true })
+  .click();
+await page.waitForTimeout(900);
 await page.locator(".desk-close").scrollIntoViewIfNeeded();
 await page.waitForTimeout(950);
-assert.equal(await page.locator(".desk-close h2").innerText(), "Where next?");
+assert.equal(
+  (await page.locator(".desk-close h2").innerText()).replace(/\s+/g, " "),
+  "Where next?",
+);
 assert.equal(
   await page
-    .locator(".desk-close > div:first-child")
+    .locator(".desk-close .closing-copy")
     .evaluate((el) => getComputedStyle(el).opacity),
   "1",
 );
 await shot("scroll-close");
+await audit("Overview with motion", 1440);
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(200);
+assert.equal(
+  await page
+    .locator(".collection-stage")
+    .evaluate((el) => getComputedStyle(el).position),
+  "static",
+);
+await page
+  .locator(".collection-window")
+  .evaluate((el) => el.scrollTo({ left: el.scrollWidth, behavior: "instant" }));
+await page.locator(".collection-window").scrollIntoViewIfNeeded();
+await page.waitForTimeout(250);
+await shot("gallery-mobile");
+await audit("Overview with motion", 390);
+for (const width of [320, 820, 1024]) {
+  await page.setViewportSize({ width, height: 1000 });
+  await page.waitForTimeout(200);
+  await audit("Overview with motion", width);
+}
+await page.setViewportSize({ width: 1440, height: 1000 });
 await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
 await page
   .getByRole("button", { name: "Explore itinerary", exact: true })
@@ -123,6 +227,7 @@ assert.equal(
   "static",
 );
 await shot("reduced-motion");
+await shot("dashboard-full", true);
 async function audit(screen, width) {
   assert(
     await page.evaluate(
@@ -219,6 +324,28 @@ await page
   .click();
 await page.getByRole("button", { name: "Delete record", exact: true }).click();
 await page.getByText("No journeys found", { exact: true }).waitFor();
+await page.emulateMedia({ reducedMotion: "no-preference" });
+for (const count of [0, 1]) {
+  await page.evaluate((count) => {
+    const state = structuredClone(window.TRAVEL_PLAN_SAMPLE);
+    state.travels = state.travels.slice(0, count);
+    localStorage.setItem(
+      "travel-plan-departure-preview-v2",
+      JSON.stringify(state),
+    );
+  }, count);
+  await page.reload();
+  await page
+    .getByRole("heading", { name: "The departure desk.", exact: true })
+    .waitFor();
+  await page.waitForTimeout(150);
+  assert(
+    (await page.locator(".collection-runway").boundingBox()).height < 500,
+    "Empty collection must not add a pinned scroll span",
+  );
+  assert.equal(await page.locator("[data-journey-card]").count(), 0);
+  assert.equal(await page.locator(".launch-runway").count(), count);
+}
 assert.equal(errors.length, 0, JSON.stringify(errors));
 assert.equal(
   network.length,
@@ -235,6 +362,12 @@ fs.writeFileSync(
         "Self-contained frontend design preview; local sample-data adapter, not live backend",
       motion: {
         independentLayers: true,
+        expandingFrame: true,
+        drawnFlightPath: true,
+        pointerDepth: true,
+        horizontalGallery: true,
+        keyboardRevealsOffscreenCards: true,
+        mobileNativeGallery: true,
         routeSelection: true,
         routeNavigation: true,
         reducedMotionStatic: true,
@@ -245,6 +378,7 @@ fs.writeFileSync(
         persistOnReload: true,
         delete: true,
         csvExport: true,
+        emptyAndSinglePlanLayouts: true,
       },
       externalRequests: network.length,
       errors,
@@ -262,5 +396,5 @@ assert(
   "Accessibility findings need attention",
 );
 console.log(
-  "Design verification passed: motion, three widths, six screens, local CRUD, persistence, export, no external requests.",
+  "Design verification passed: motion, five widths, six screens, local CRUD, persistence, export, no external requests.",
 );

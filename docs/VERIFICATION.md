@@ -1,6 +1,6 @@
-# Verification record · 13 September 2026
+# Verification record Â· 13 September 2026
 
-This record separates tested behavior, supplied configuration and remaining work. The final design is The Departure Desk, replacing the first design direction the user rejected.
+This record separates tested behavior, supplied configuration and remaining work. The final design is Kinetic Atlas, expanding The Departure Desk in response to the request for more ambitious scroll effects.
 
 | Check | Observed result |
 | --- | --- |
@@ -10,10 +10,10 @@ This record separates tested behavior, supplied configuration and remaining work
 | Frontend dependency audit | Zero reported vulnerabilities in the resolved npm dependency tree. This is not a whole-stack security audit. |
 | Chrome design checks | Installed Chrome 152.0.7977.83 passed against the self-contained preview. |
 | Firefox design checks | Playwright Firefox 155.0 on native Ubuntu through WSL passed against the same preview. Windows Firefox still has a side-by-side runtime startup error. |
-| Motion | Computed photograph and ticket transforms change independently; scrolling selects Ubud then Uluwatu; direct route navigation works; reduced motion disables parallax and sticky layout. Final closing copy remains visible. |
-| Layout and automated accessibility | Overview at 1440, 390 and 320 pixels, plus all five other screens at 390 pixels, passed horizontal-overflow checks and axe WCAG 2 A/AA and 2.1 AA rules in both browsers: 16 checks with no violations. |
-| Preview workflows | Create, edit, reload persistence, search, delete and CSV download passed in both browsers using local fictional data. No uncaught page errors or external HTTP requests. These checks do not verify Java authentication or provider connectivity. |
-| Visual inspection | Desktop opening, intermediate scroll states, changing route photograph, closing action, editor, mobile and reduced-motion renders reviewed. Scroll contact sheet and a browser recording accompany the deliverables. |
+| Motion | The photograph expands in a pinned frame; ticket and photograph move independently; the SVG route draws; pointer depth responds; scrolling selects Ubud then Uluwatu; the gallery pans and reveals keyboard-focused cards. Direct route and gallery controls work. Reduced motion disables parallax and pinning. Closing copy remains visible. |
+| Layout and automated accessibility | Overview with motion at 1440, 1024, 820, 390 and 320 pixels, reduced-motion overview at 1440, 390 and 320 pixels, and five other mobile screens passed horizontal-overflow checks and axe WCAG 2 A/AA and 2.1 AA rules: 26 checks across Chrome and Firefox with no violations. |
+| Preview workflows | Create, edit, reload persistence, search, delete, CSV download and zero/one-plan layouts passed in both browsers using local fictional data. No uncaught page errors or external HTTP requests. These checks do not verify Java authentication or provider connectivity. |
+| Visual inspection | Desktop opening, intermediate scroll states, changing route photograph, closing action, editor, mobile and reduced-motion renders reviewed. A new scroll contact sheet and a browser recording accompany the deliverables. The main full-page image uses reduced motion so the complete content is visible without photographing empty pin travel. |
 | Earlier live Chrome workflows | Navigation/logout, persisted itinerary CRUD and API security/cascade scenarios passed before the runtime interruption. They have not been rerun against the final frontend because Docker is offline. |
 | Earlier running infrastructure | PostgreSQL, Neo4j, Vault, agents and one replica of each Java service were exercised. Neo4j contained four Travel nodes matching the seeded PostgreSQL records. |
 | TLS | Application HTTPS, JDBC TLS, Vault HTTPS and verified Bolt TLS were exercised earlier. The later repeatable `scripts/verify-infrastructure.py` still needs its first complete run. |

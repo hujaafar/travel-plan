@@ -10,6 +10,7 @@ import "@fontsource/fraunces/latin-400-italic.css";
 import App from "./App";
 import "./style.css";
 import "./editorial.css";
+import "./kinetic.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

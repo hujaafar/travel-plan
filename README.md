@@ -4,7 +4,7 @@ A Java microservices project with a working travel administration dashboard. Bui
 
 **Current laptop status:** the redesigned frontend builds and passes Chrome and Linux Firefox design checks. A self-contained interactive preview works without Docker. Docker remains offline after a disk-full interruption and a stale-socket startup error. See [verification status](docs/VERIFICATION.md) for the exact scope and remaining infrastructure work.
 
-The Departure Desk applies the requested Scroll Craft skill through an editorial travel workspace: paper tones, vermilion, locally served Fraunces and DM Sans, an independently moving photograph and departure ticket, and a sticky itinerary bookmark that changes destination as you read. Mobile has its own composition; reduced motion keeps all content in normal flow.
+The Kinetic Atlas advances the requested Scroll Craft design: an expanding pinned departure scene, a drawn flight path, independently moving ticket and photograph, pointer depth, travelling destination type, a dark itinerary spread, a horizontal gallery with perspective, and an oversized orbital close. Native scrolling controls the scenes. Mobile uses a swipeable gallery; reduced motion restores normal document flow.
 
 ## Open the design without Docker
 
@@ -23,7 +23,7 @@ $env:DESIGN_BROWSER = 'firefox'
 node scripts/verify-design.mjs
 ```
 
-Preview results are separate from the real-service end-to-end suite below. The browser test covers independent scroll layers, stop selection, reduced motion, desktop and narrow layouts, six screens, local travel CRUD, persistence and CSV export.
+Preview results are separate from the real-service end-to-end suite below. The browser test covers the expanding frame, SVG flight path, pointer depth, independent layers, itinerary selection, horizontal gallery movement, keyboard focus, mobile swiping, reduced motion, five viewport widths, six screens, local travel CRUD, empty/single-plan layouts, persistence and CSV export. Run `node scripts/record-design.mjs` after the tests to record the scroll sequence and assemble its contact sheet.
 
 ## Start on this Windows laptop
 
