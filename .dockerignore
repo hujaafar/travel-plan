@@ -1,0 +1,7 @@
+.git
+.agents
+.secrets
+**/node_modules
+**/target
+**/dist
+work

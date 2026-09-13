@@ -1,0 +1,76 @@
+{
+ admin off
+ auto_https off
+}
+https://localhost:8443 {
+ tls /certs/tls.crt /certs/tls.key
+ encode zstd gzip
+ header {
+  X-Content-Type-Options nosniff
+  X-Frame-Options DENY
+  Referrer-Policy strict-origin-when-cross-origin
+  Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+ }
+ @identity path /api/auth/* /api/users /api/users/*
+ handle @identity {
+  reverse_proxy {
+   dynamic a {
+    name identity
+    port 8443
+    refresh 5s
+   }
+   transport http {
+    tls
+    tls_server_name identity
+    tls_trust_pool file /certs/ca.crt
+   }
+   lb_policy round_robin
+   fail_duration 10s
+  }
+ }
+ handle /api/travels* {
+  reverse_proxy {
+   dynamic a {
+    name travel
+    port 8443
+    refresh 5s
+   }
+   transport http {
+    tls
+    tls_server_name travel
+    tls_trust_pool file /certs/ca.crt
+   }
+   lb_policy round_robin
+   fail_duration 10s
+  }
+ }
+ handle /api/payments* {
+  reverse_proxy {
+   dynamic a {
+    name payments
+    port 8443
+    refresh 5s
+   }
+   transport http {
+    tls
+    tls_server_name payments
+    tls_trust_pool file /certs/ca.crt
+   }
+   lb_policy round_robin
+   fail_duration 10s
+  }
+ }
+ handle /api/* {
+  respond "Not found" 404
+ }
+ handle {
+  root * /srv
+  try_files {path} /index.html
+  file_server
+ }
+ log {
+  output stdout
+  format json
+ }
+}

@@ -1,0 +1,17 @@
+FROM maven:3.9.11-eclipse-temurin-17 AS build
+WORKDIR /src
+COPY pom.xml .
+COPY dashboard/pom.xml dashboard/pom.xml
+COPY services services
+ARG SERVICE
+RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl services/${SERVICE} -am package -DskipTests
+RUN cp services/${SERVICE}/target/${SERVICE}-1.0.0.jar /app.jar
+FROM eclipse-temurin:17-jre-alpine
+RUN apk add --no-cache curl && addgroup -g 10001 app && adduser -D -u 10001 -G app app
+WORKDIR /app
+COPY --from=build /app.jar app.jar
+COPY infra/service-entrypoint.sh /app/entrypoint.sh
+USER 10001
+EXPOSE 8443
+HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=5 CMD curl --fail --silent --cacert /certs/ca.crt https://localhost:8443/actuator/health/readiness || exit 1
+ENTRYPOINT ["sh","/app/entrypoint.sh"]
