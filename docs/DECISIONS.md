@@ -8,7 +8,7 @@
 | PostgreSQL | Transactions, numeric money types, constraints, cascade rules and shared session consistency |
 | Neo4j Java driver | Explicit destination relationships projected transactionally |
 | React + TypeScript + Vite | Typed reusable forms and responsive interaction, static production output |
-| DM Sans + Manrope | Two locally served families with consistent reading and display roles |
+| DM Sans + Fraunces | A readable operational face and an expressive editorial face for the itinerary spreads; both served locally |
 | Lucide | Consistent, lightweight SVG icon vocabulary |
 | Native HTML dialog | Focus trapping, Escape handling and browser semantics without a modal library |
 | Playwright + axe | Actual Chrome/Firefox workflows, narrow viewport checks, reduced motion and accessibility assertions |
@@ -22,13 +22,13 @@ The `.npmrc` enables legacy peer resolution because npm 10/11 otherwise traverse
 
 ## Scroll Craft adaptation
 
-The user explicitly requested [Scroll Craft](https://github.com/nateherkai/scroll-craft). The full skill was installed and read. This is an admin application, so its live-surface grammar and design floor were applied instead of a long marketing scroll sequence. The authored brief is labelled as assumptions, not invented user quotations. There is no generated video or API spend. Standard photographs, native scrolling, a destination ribbon, restrained hover transitions and a reduced-motion variant support the real tasks.
+The user explicitly requested [Scroll Craft](https://github.com/nateherkai/scroll-craft), then rejected the first restrained dashboard and delegated a stronger scroll-led redesign. The complete skill is installed locally. The final direction is an editorial working desk with a compact application rail, a layered departure composition, a photographic itinerary bookmark, an offset saved-journey collection and a working planning action. The brief distinguishes supplied evidence from authored decisions.
 
-The local fingerprint registry started empty. The signature interaction is a route ribbon that shows each destination's experiences, stay and transport. See `scrollcraft/builds/travel-plan/BRIEF.md` and the verification notes.
+The rejected fingerprint remains in the registry. The new build differs in all six dimensions; see `scrollcraft/builds/departure-desk/BRIEF.md` and `REPORT.md`. The upstream engine is preserved unmodified for reference. A small React hook implements the relevant progress and reveal behavior with lifecycle cleanup and one queued animation frame, avoiding duplicate observers after navigation. It never intercepts wheel input. No generated media, paid API calls, scroll-scrubbed video or full video encoder is required for this photographic composition.
 
 ## Photography and assets
 
-Cover photographs are illustrative assets from Unsplash, downloaded and served locally. They are not booking listings or evidence of an included property. The sample itineraries are fictional teaching data. The brand mark is an original SVG created for this project. Font licenses are included with the installed Fontsource packages; both families are distributed under the SIL Open Font License. Scroll Craft includes its upstream license.
+Cover photographs are illustrative assets from Unsplash, downloaded and served locally. They are not booking listings or evidence of an included property. The sample itineraries are fictional teaching data. The brand mark is an original SVG created for this project. Both font families are distributed under the SIL Open Font License; copies are in `docs/licenses` and embedded in the standalone preview. Scroll Craft includes its upstream license.
 
 | Local asset | Original image |
 |---|---|
@@ -38,5 +38,7 @@ Cover photographs are illustrative assets from Unsplash, downloaded and served l
 | Morocco | https://images.unsplash.com/photo-1539020140153-e479b8c22e70 |
 | Greece | https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e |
 | Iceland | https://images.unsplash.com/photo-1476610182048-b716b8518aae |
+| Ubud route photograph | https://images.unsplash.com/photo-1555400038-63f5ba517a47 |
+| Uluwatu route photograph | https://unsplash.com/photos/a-view-of-the-ocean-from-the-top-of-a-cliff-GA7rJUjzbJQ (Reynardo Etenia Wongso) |
 
 See [Unsplash license](https://unsplash.com/license). Replace these local covers with project-owned photography if the product is publicly launched.

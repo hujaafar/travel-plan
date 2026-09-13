@@ -2,9 +2,28 @@
 
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
-**Current laptop status:** implementation and earlier live checks are saved, but Docker is stopped after the C: drive filled up. Recover disk space before starting. See [verification status](docs/VERIFICATION.md) for completed checks and remaining work.
+**Current laptop status:** the redesigned frontend builds and passes Chrome and Linux Firefox design checks. A self-contained interactive preview works without Docker. Docker remains offline after a disk-full interruption and a stale-socket startup error. See [verification status](docs/VERIFICATION.md) for the exact scope and remaining infrastructure work.
 
-The interface uses Scroll Craft's live-surface principles: purposeful navigation, restrained motion, a consistent type and spacing system, and a destination ribbon that reveals the activities, stay, and transport for each stop.
+The Departure Desk applies the requested Scroll Craft skill through an editorial travel workspace: paper tones, vermilion, locally served Fraunces and DM Sans, an independently moving photograph and departure ticket, and a sticky itinerary bookmark that changes destination as you read. Mobile has its own composition; reduced motion keeps all content in normal flow.
+
+## Open the design without Docker
+
+The supplied `Travel-Plan-Preview.html` can be opened directly in Chrome or Firefox. It contains the complete built interface, fonts and photographs, plus explicitly labelled fictional sample data. Forms save only in that browser's local storage. It makes no external requests, does not authenticate real users and cannot contact payment providers.
+
+To regenerate and verify the preview from source:
+
+```powershell
+cd dashboard
+npm ci
+npm run build
+python ../scripts/export-preview.py
+node scripts/verify-design.mjs
+# Requires Playwright's Firefox and its operating-system dependencies:
+$env:DESIGN_BROWSER = 'firefox'
+node scripts/verify-design.mjs
+```
+
+Preview results are separate from the real-service end-to-end suite below. The browser test covers independent scroll layers, stop selection, reduced motion, desktop and narrow layouts, six screens, local travel CRUD, persistence and CSV export.
 
 ## Start on this Windows laptop
 

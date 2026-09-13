@@ -7,6 +7,14 @@ export type User = {
   created_at: string;
   csrf?: string;
 };
+declare global {
+  interface Window {
+    TRAVEL_PLAN_ASSETS?: Record<string, string>;
+    TRAVEL_PLAN_PREVIEW?: boolean;
+  }
+}
+export const photo = (key: string) =>
+  window.TRAVEL_PLAN_ASSETS?.[key] || "/images/" + key + ".jpg";
 export type Stop = {
   destination: string;
   country: string;

@@ -1,3 +1,4 @@
+import Overview from "./Overview";
 import {
   useEffect,
   useRef,
@@ -26,22 +27,17 @@ import {
   MoreHorizontal,
   X,
   Check,
-  SlidersHorizontal,
   Menu,
   LogOut,
   HelpCircle,
   CheckCircle2,
   ShieldCheck,
-  Leaf,
   Plane,
   Hotel,
   Activity,
   Trash2,
   Pencil,
-  Eye,
   LoaderCircle,
-  Route,
-  ExternalLink,
   AlertCircle,
 } from "lucide-react";
 import { api, setCsrf } from "./api";
@@ -55,6 +51,7 @@ import {
   initials,
   matchesTravel,
   csvCell,
+  photo,
 } from "./types";
 type Page =
   "overview" | "travels" | "users" | "payments" | "calendar" | "settings";
@@ -69,7 +66,6 @@ const nav = [
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
-const photo = (key: string) => "/images/" + key + ".jpg";
 const statusLabel = (value: string) => value.toLowerCase().replaceAll("_", " ");
 function Badge({ value }: { value: string }) {
   return (
@@ -187,7 +183,11 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
         <div className="login-form-inner">
           <span className="eyebrow">YOUR ADMIN WORKSPACE</span>
           <h2>Welcome back.</h2>
-          <p>Sign in and pick up where your journey left off.</p>
+          <p>
+            {window.TRAVEL_PLAN_PREVIEW
+              ? "Design preview. Use any nonempty password to reopen the sample workspace."
+              : "Sign in and pick up where your journey left off."}
+          </p>
           <form onSubmit={submit}>
             <label>
               Email address
@@ -225,7 +225,10 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
             </button>
           </form>
           <p className="login-note">
-            <ShieldCheck size={16} /> Secure administrator access
+            <ShieldCheck size={16} />{" "}
+            {window.TRAVEL_PLAN_PREVIEW
+              ? "Local sample data. No live connections."
+              : "Secure administrator access"}
           </p>
         </div>
         <p className="login-footer">
@@ -310,14 +313,6 @@ export default function App() {
     setMenu(false);
     window.scrollTo({ top: 0, behavior: "instant" });
   }
-  const upcoming = travels
-    .filter(
-      (t) =>
-        t.status === "PUBLISHED" &&
-        t.start_date.slice(0, 10) >= new Date().toISOString().slice(0, 10),
-    )
-    .sort((a, b) => a.start_date.localeCompare(b.start_date));
-  const featured = upcoming[0] || travels[0];
   async function deleted() {
     if (!remove) return;
     setDeleting(true);
@@ -388,7 +383,12 @@ export default function App() {
           <img src="/mark.svg" alt="" />
           travel<span>plan.</span>
         </a>
-        <button className="workspace-switch" onClick={() => setHelp(true)}>
+        <button
+          className="workspace-switch"
+          aria-label="Workspace guide"
+          title="Workspace guide"
+          onClick={() => setHelp(true)}
+        >
           <span className="workspace-icon">
             <Compass size={19} />
           </span>
@@ -399,10 +399,12 @@ export default function App() {
           <ChevronDown size={15} />
         </button>
         <p className="nav-label">WORKSPACE</p>
-        <nav>
+        <nav aria-label="Workspace">
           {nav.map((n) => (
             <button
               key={n.id}
+              aria-label={n.label}
+              data-label={n.label}
               className={page === n.id ? "active" : ""}
               onClick={() => navigate(n.id)}
               aria-current={page === n.id ? "page" : undefined}
@@ -416,29 +418,20 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <Leaf size={23} />
-            <h3>
-              Good journeys start
-              <br />
-              with a great plan.
-            </h3>
-            <p>Make room for what’s next.</p>
-            <button
-              onClick={() =>
-                canTravel ? setEditor({ kind: "travel" }) : navigate("travels")
-              }
-            >
-              Explore the possibilities <ArrowUpRight size={16} />
-            </button>
-          </div>
           <button
+            aria-label="Settings"
+            data-label="Settings"
             className={"side-link " + (page === "settings" ? "selected" : "")}
             onClick={() => navigate("settings")}
           >
             <Settings size={18} /> Settings
           </button>
-          <button className="side-link" onClick={() => setHelp(true)}>
+          <button
+            className="side-link"
+            aria-label="Help & getting started"
+            data-label="Help & getting started"
+            onClick={() => setHelp(true)}
+          >
             <HelpCircle size={18} /> Help & getting started
           </button>
           <button className="profile" onClick={() => navigate("settings")}>
@@ -461,14 +454,28 @@ export default function App() {
             <Menu size={22} />
           </button>
           <span className="breadcrumb">
-            Workspace <ChevronRight size={13} />{" "}
+            <span className="workspace-wordmark">
+              travelplan<i>.</i>
+            </span>
+            <span className="workspace-context">Workspace</span>
+            <ChevronRight size={13} />{" "}
             <strong>
               {nav.find((n) => n.id === page)?.label || "Settings"}
             </strong>
           </span>
           <div className="topbar-right">
-            <span className="sample-label">
-              <i /> Sample workspace
+            <span
+              className="sample-label"
+              title={
+                window.TRAVEL_PLAN_PREVIEW
+                  ? "Interactive design preview. Changes stay in this browser; no live payments or backend connections."
+                  : "Sample travel workspace"
+              }
+            >
+              <i />{" "}
+              {window.TRAVEL_PLAN_PREVIEW
+                ? "Design preview · sample data"
+                : "Sample workspace"}
             </span>
             <button
               className="icon-button"
@@ -496,187 +503,16 @@ export default function App() {
             </div>
           )}
           {page === "overview" && (
-            <>
-              <div className="page-heading">
-                <div>
-                  <div className="greeting">A WORLD OF POSSIBILITIES</div>
-                  <h1>
-                    Your next chapter starts here<span>.</span>
-                  </h1>
-                  <p>
-                    Great journeys, happy travellers. Everything in one place.
-                  </p>
-                </div>
-                <button
-                  className="button primary"
-                  onClick={() => setEditor({ kind: "travel" })}
-                  disabled={!canTravel}
-                >
-                  <Plus size={17} /> Create travel plan
-                </button>
-              </div>
-              <div className="metrics">
-                {[
-                  {
-                    label: "Travel plans",
-                    value: travels.length,
-                    detail:
-                      travels.filter((t) => t.status === "PUBLISHED").length +
-                      " published",
-                    icon: Map,
-                  },
-                  {
-                    label: "People in your workspace",
-                    value: users.length,
-                    detail:
-                      users.filter((u) => u.status === "ACTIVE").length +
-                      " active accounts",
-                    icon: Users,
-                  },
-                  {
-                    label: "Upcoming departures",
-                    value: upcoming.length,
-                    detail: "Your published journeys",
-                    icon: Plane,
-                  },
-                  {
-                    label: "Payment methods",
-                    value: gateways.length,
-                    detail:
-                      gateways.filter((g) => g.configured).length +
-                      " connected providers",
-                    icon: CreditCard,
-                  },
-                ].map((m) => (
-                  <div className="metric" key={m.label}>
-                    <div>
-                      <span>{m.label}</span>
-                      <m.icon size={17} />
-                    </div>
-                    <strong>{m.value.toString().padStart(2, "0")}</strong>
-                    <small>{m.detail}</small>
-                  </div>
-                ))}
-              </div>
-              <div className="overview-feature">
-                {featured ? (
-                  <article className="feature-image">
-                    <img
-                      src={photo(featured.image)}
-                      alt={featured.stops
-                        .map((s) => s.destination)
-                        .join(" and ")}
-                    />
-                    <div className="feature-copy">
-                      <span className="eyebrow">ON THE HORIZON</span>
-                      <h2>{featured.title}</h2>
-                      <p>
-                        {featured.stops.map((s) => s.destination).join("  →  ")}
-                      </p>
-                      <button
-                        className="button light"
-                        onClick={() => setDetail(featured)}
-                      >
-                        Explore itinerary <ArrowUpRight size={17} />
-                      </button>
-                    </div>
-                    <div className="feature-index">
-                      <span>{featured.duration} days</span>
-                      <span>{featured.stops.length} destinations</span>
-                    </div>
-                  </article>
-                ) : (
-                  <Empty
-                    title="Your first journey awaits"
-                    text="Create a travel plan to bring this workspace to life."
-                  />
-                )}
-                <section className="departure">
-                  <div className="section-label">
-                    NEXT DEPARTURE <Plane size={17} />
-                  </div>
-                  {upcoming[0] ? (
-                    <>
-                      <div className="departure-date">
-                        <strong>
-                          {date(upcoming[0].start_date, { day: "2-digit" })}
-                        </strong>
-                        <div>
-                          {date(upcoming[0].start_date, { month: "long" })}
-                          <span>
-                            {date(upcoming[0].start_date, { year: "numeric" })}
-                          </span>
-                        </div>
-                      </div>
-                      <h3>{upcoming[0].title}</h3>
-                      <p>
-                        <MapPin size={14} />
-                        {upcoming[0].stops[0]?.country}
-                      </p>
-                      <div className="ticket-seam" />
-                      <div className="departure-details">
-                        <span>
-                          Duration<strong>{upcoming[0].duration} days</strong>
-                        </span>
-                        <span>
-                          Travellers
-                          <strong>
-                            {upcoming[0].participantIds.length} /{" "}
-                            {upcoming[0].capacity}
-                          </strong>
-                        </span>
-                      </div>
-                      <button
-                        className="text-link"
-                        onClick={() => setDetail(upcoming[0])}
-                      >
-                        View travel details <ArrowRight size={17} />
-                      </button>
-                    </>
-                  ) : (
-                    <Empty
-                      title="Clear skies ahead"
-                      text="No published departures scheduled yet."
-                    />
-                  )}
-                </section>
-              </div>
-              <section className="journeys-section">
-                <div className="section-heading">
-                  <div>
-                    <h2>A few journeys in the making</h2>
-                    <p>Considered itineraries. Unforgettable places.</p>
-                  </div>
-                  <button
-                    className="text-link"
-                    onClick={() => navigate("travels")}
-                  >
-                    View all plans <ArrowRight size={17} />
-                  </button>
-                </div>
-                <div className="journey-grid">
-                  {travels.slice(0, 3).map((t) => (
-                    <TravelCard
-                      key={t.id}
-                      travel={t}
-                      open={() => setDetail(t)}
-                    />
-                  ))}
-                </div>
-              </section>
-              <section className="workspace-strip">
-                <div className="strip-icon">
-                  <ShieldCheck size={24} />
-                </div>
-                <div>
-                  <h3>A well-kept workspace</h3>
-                  <p>Manage your people and payment methods with care.</p>
-                </div>
-                <button className="text-link" onClick={() => navigate("users")}>
-                  Manage people <ArrowUpRight size={17} />
-                </button>
-              </section>
-            </>
+            <Overview
+              travels={travels}
+              users={users}
+              gateways={gateways}
+              canTravel={canTravel}
+              onCreate={() => setEditor({ kind: "travel" })}
+              onOpen={setDetail}
+              onPlans={() => navigate("travels")}
+              onExport={exportPlans}
+            />
           )}
           {page === "travels" && (
             <>
@@ -1310,7 +1146,7 @@ export default function App() {
             </div>
           )}
           <footer className="footer">
-            <span>Thoughtfully planned. Beautifully travelled.</span>
+            <span>Good plans take you places.</span>
             <span>
               Travel Plan <span className="footer-dot">•</span> Admin workspace
             </span>
@@ -1434,39 +1270,7 @@ function PageHeading({
     </div>
   );
 }
-function TravelCard({ travel: t, open }: { travel: Travel; open: () => void }) {
-  return (
-    <article className="journey-card">
-      <button
-        className="journey-photo"
-        onClick={open}
-        aria-label={"View " + t.title}
-      >
-        <img src={photo(t.image)} alt={t.stops[0]?.destination} />
-        <span className="photo-arrow">
-          <ArrowUpRight size={21} />
-        </span>
-      </button>
-      <div className="journey-card-meta">
-        <span>{t.stops[0]?.country}</span>
-        <Badge value={t.status} />
-      </div>
-      <button className="title-button" onClick={open}>
-        <h3>{t.title}</h3>
-      </button>
-      <div className="journey-card-bottom">
-        <span>
-          <CalendarDays size={14} />
-          {date(t.start_date)} · {t.duration} days
-        </span>
-        <strong>
-          {money(t.price)}
-          <small> / person</small>
-        </strong>
-      </div>
-    </article>
-  );
-}
+
 function TravelDetail({
   travel: t,
   onClose,
