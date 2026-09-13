@@ -1698,32 +1698,3 @@ textarea {
     padding-right: 15px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .cover-photograph,
-  .departure-ticket-plane,
-  .cover-seal {
-    transform: none;
-  }
-  .motion-ready [data-sc-in] {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  .bookmark-photo img,
-  .route-track-line:after,
-  .journey-portrait img,
-  .portrait-arrow {
-    transition: none;
-  }
-  .route-bookmark {
-    position: static;
-  }
-  .route-reading-stop {
-    min-height: 0;
-    padding-top: 26px;
-    padding-bottom: 36px;
-  }
-  .reader-layout {
-    padding-bottom: 35px;
-  }
-}

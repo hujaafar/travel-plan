@@ -13,16 +13,6 @@ const stars = Array.from({ length: 72 }, (_, i) => ({
   opacity: 0.18 + (i % 5) * 0.13,
 }));
 
-function initialMotion() {
-  try {
-    const saved = localStorage.getItem("travel-plan-orbit-motion");
-    if (saved) return saved === "on";
-  } catch {
-    /* Storage can be unavailable in a private or sandboxed preview. */
-  }
-  return !matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 export default function OrbitIntro({
   travel,
   onOpen,
@@ -32,25 +22,9 @@ export default function OrbitIntro({
 }) {
   const root = useRef<HTMLElement>(null),
     canvas = useRef<HTMLCanvasElement>(null);
-  const [motion, setMotion] = useState(initialMotion);
   const [chapter, setChapter] = useState(0);
   const [rendered, setRendered] = useState(false);
   const country = travel?.stops[0]?.country || "somewhere new";
-
-  useEffect(() => {
-    const media = matchMedia("(prefers-reduced-motion: reduce)");
-    const change = () => {
-      let saved = null;
-      try {
-        saved = localStorage.getItem("travel-plan-orbit-motion");
-      } catch {
-        /* optional */
-      }
-      if (!saved) setMotion(!media.matches);
-    };
-    media.addEventListener("change", change);
-    return () => media.removeEventListener("change", change);
-  }, []);
 
   useEffect(() => {
     const el = root.current,
@@ -67,9 +41,9 @@ export default function OrbitIntro({
       if (document.hidden || !el) return;
       const box = el.getBoundingClientRect();
       if (box.bottom < 0 || box.top > innerHeight) return;
-      const p = motion
-        ? clamp(-box.top / Math.max(1, el.offsetHeight - stage.offsetHeight))
-        : 0;
+      const p = clamp(
+        -box.top / Math.max(1, el.offsetHeight - stage.offsetHeight),
+      );
       const next = p < 0.3 ? 0 : p < 0.67 ? 1 : 2;
       if (next !== selected) {
         selected = next;
@@ -90,12 +64,12 @@ export default function OrbitIntro({
         "--route-opacity":
           clamp((p - 0.27) / 0.09) * (1 - clamp((p - 0.57) / 0.08)),
         "--arrival-opacity": clamp((p - 0.72) / 0.12),
-        "--pointer-x": motion ? pointerX : 0,
-        "--pointer-y": motion ? pointerY : 0,
+        "--pointer-x": pointerX,
+        "--pointer-y": pointerY,
       };
       for (const [key, value] of Object.entries(values))
         el.style.setProperty(key, value.toFixed(4));
-      const rotation = 0.42 + p * 2.65 + (motion ? pointerX * 0.12 : 0);
+      const rotation = 0.42 + p * 2.65 + pointerX * 0.12;
       const t = clamp(p / 0.65),
         u = 1 - t;
       const craft = el.querySelector(".orbital-craft");
@@ -115,7 +89,7 @@ export default function OrbitIntro({
       if (!frame) frame = requestAnimationFrame(paint);
     }
     function move(event: PointerEvent) {
-      if (event.pointerType !== "mouse" || !motion) return;
+      if (event.pointerType !== "mouse") return;
       const box = stage.getBoundingClientRect();
       pointerX = (event.clientX - box.left) / box.width - 0.5;
       pointerY = (event.clientY - box.top) / box.height - 0.5;
@@ -157,7 +131,7 @@ export default function OrbitIntro({
       surface.removeEventListener("webglcontextrestored", restored);
       globe?.dispose();
     };
-  }, [motion]);
+  }, []);
 
   function goTo(index: number) {
     const el = root.current;
@@ -168,9 +142,7 @@ export default function OrbitIntro({
         el.getBoundingClientRect().top +
         scrollY +
         phases[index] * (el.offsetHeight - height),
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
+      behavior: "smooth",
     });
   }
   function skip() {
@@ -179,24 +151,10 @@ export default function OrbitIntro({
     heading?.scrollIntoView({ behavior: "instant", block: "start" });
     heading?.focus({ preventScroll: true });
   }
-  function toggle() {
-    const top = (root.current?.getBoundingClientRect().top || 0) + scrollY;
-    try {
-      localStorage.setItem("travel-plan-orbit-motion", motion ? "off" : "on");
-    } catch {
-      /* optional */
-    }
-    setRendered(false);
-    setMotion(!motion);
-    requestAnimationFrame(() =>
-      window.scrollTo({ top: Math.max(0, top), behavior: "instant" }),
-    );
-  }
-
   return (
     <section
       ref={root}
-      className={`orbital-intro ${motion ? "orbit-motion" : "orbit-static"}`}
+      className="orbital-intro orbit-motion"
       aria-label="An orbital departure"
     >
       <div className="orbit-stage" data-sc-verify-state="initial">
@@ -246,20 +204,12 @@ export default function OrbitIntro({
             <Orbit size={15} /> TRAVEL PLAN / ATLAS
           </span>
           <div>
-            <button
-              onClick={toggle}
-              aria-pressed={motion}
-              aria-label="Enable orbital motion"
-            >
-              Motion {motion ? "on" : "off"}
-              <i />
-            </button>
             <button onClick={skip}>
               Skip to workspace <ArrowUpRight size={14} />
             </button>
           </div>
         </div>
-        <div className="orbit-intro-copy" aria-hidden={motion && chapter !== 0}>
+        <div className="orbit-intro-copy" aria-hidden={chapter !== 0}>
           <span className="orbit-eyebrow">A DIFFERENT POINT OF VIEW</span>
           <h2>
             A world
@@ -272,10 +222,7 @@ export default function OrbitIntro({
             Every detail, brought together.
           </p>
         </div>
-        <div
-          className="orbit-route-copy"
-          aria-hidden={!motion || chapter !== 1}
-        >
+        <div className="orbit-route-copy" aria-hidden={chapter !== 1}>
           <span className="orbit-eyebrow">
             THE DISTANCE BETWEEN DREAMING & GOING
           </span>
@@ -288,8 +235,8 @@ export default function OrbitIntro({
         </div>
         <div
           className="orbit-arrival-copy"
-          aria-hidden={!motion || chapter !== 2}
-          inert={!motion || chapter !== 2}
+          aria-hidden={chapter !== 2}
+          inert={chapter !== 2}
         >
           <span className="orbit-eyebrow">WELCOME TO YOUR NEXT CHAPTER</span>
           <h2>
@@ -307,28 +254,22 @@ export default function OrbitIntro({
           <div className="orbit-scroll-cue">
             <ArrowDown size={20} />
             <span>
-              {motion ? "SCROLL TO TRAVEL" : "YOUR WORLD, AT A GLANCE"}
-              <small>
-                {motion
-                  ? "From orbit to arrival"
-                  : "Enable motion to take the journey"}
-              </small>
+              SCROLL TO TRAVEL
+              <small>From orbit to arrival</small>
             </span>
           </div>
-          {motion && (
-            <nav className="orbit-chapters" aria-label="Orbital chapters">
-              {["The world", "The route", "The arrival"].map((name, i) => (
-                <button
-                  key={name}
-                  onClick={() => goTo(i)}
-                  aria-current={chapter === i ? "step" : undefined}
-                >
-                  <span>0{i + 1}</span>
-                  {name}
-                </button>
-              ))}
-            </nav>
-          )}
+          <nav className="orbit-chapters" aria-label="Orbital chapters">
+            {["The world", "The route", "The arrival"].map((name, i) => (
+              <button
+                key={name}
+                onClick={() => goTo(i)}
+                aria-current={chapter === i ? "step" : undefined}
+              >
+                <span>0{i + 1}</span>
+                {name}
+              </button>
+            ))}
+          </nav>
           <span className="orbit-coordinate" aria-hidden="true">
             EARTH / EVERY POSSIBILITY
           </span>

@@ -2815,21 +2815,6 @@ form textarea::placeholder {
     min-height: 46px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *:before,
-  *:after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  .journey-photo:hover img,
-  .feature-image:hover > img {
-    transform: none;
-  }
-}
-
 @media (max-width: 700px) {
   .sidebar {
     visibility: hidden;

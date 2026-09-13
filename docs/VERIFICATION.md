@@ -1,6 +1,24 @@
 # Verification record · 13 September 2026
 
-This record separates tested behavior, supplied configuration and remaining work. The final design adds Orbital departure to Kinetic Atlas in response to the supplied Árstraumur reference and the request for visible scroll effects in narrow previews.
+This record separates tested behavior, supplied configuration and remaining work. The current Unified Atlas revision applies one dark palette, shared headings and component treatments across Home, every operational page, forms, help and login. Motion remains enabled under the user's explicit request, including when an old motion-off choice is stored or the OS requests reduced motion. The historical sections below retain earlier evidence and the earlier motion policy; they are not claims that those builds are the current interface.
+
+## Unified Atlas — current verification
+
+| Check | Observed result |
+| --- | --- |
+| Visual consistency suites | `dashboard/scripts/verify-consistency.mjs` passed 30 screens in Chrome and the same 30 in Linux Firefox: six pages, three lower Home sections, three editors, travel detail, help and login, each at desktop 1440 × 1000 and mobile 390 × 844. All 60 had zero axe violations and zero document overflow; navigation, dialog access and return from sign-in completed without uncaught page errors. |
+| Orbital motion suites | `verify-orbit.mjs` passed 12 cases per browser at widths 320, 390, 700, 820, 1024 and 1440, including the scene frames and short laptop layout. Motion remained active under OS reduced motion and an old stored off choice. Chapter controls, skip-to-workspace and navigation/remount passed. Chrome rendered WebGL and passed context loss/restoration; Linux Firefox had no WebGL and passed through the CSS photographic fallback. This is not a Firefox WebGL validation. |
+| Design and workflow suites | `verify-design.mjs` passed 13 cases per browser covering the scroll layers, route, pointer depth, gallery movement and keyboard reveal, responsive layouts, local travel creation/editing, reload persistence, search, deletion, CSV export and zero/one-plan layouts. These portable-preview runs reported no uncaught page errors or external requests. |
+| Combined automated accessibility/layout | The three suites completed 110 cases across Chrome and Linux Firefox: 60 consistency + 24 orbital + 26 design. No axe WCAG 2 A/AA or 2.1 AA violations and no document overflow were reported. |
+| Visual evidence | Desktop/mobile page sheets, mobile forms and lower Home, and the six-stage Home contact sheet were visually reviewed. `all-pages-contact-sheet.png`, `forms-contact-sheet.png`, `home-contact-sheet.png`, `scroll-contact-sheet.png`, individual captures and the refreshed `design-motion.webm` cover the final interface. Computed palette and font values are recorded for review. Current Home evidence uses scene contact sheets in place of full-page screenshots, which cannot represent an always-active pinned sequence accurately. |
+| Build, units and formatting | Final TypeScript/Vite production build passed; all four Vitest tests passed; Prettier checks passed for all frontend source and scripts. |
+| Backend and deployment | Not rerun for this design revision. The portable sample checks do not verify live Java services, authentication, payment-provider connectivity or infrastructure availability. Existing Docker and deployment limitations below still apply. |
+
+Page entry animation now translates fully opaque content, maintaining text contrast throughout entry. A Firefox test-readiness race around preview restoration was corrected before the successful final run. See `scrollcraft/builds/unified-atlas/BRIEF.md` and `REPORT.md` for the design contract and current evidence. Source-archive packaging remains a separate final step; no archive status is asserted here.
+
+## Historical Kinetic Atlas verification
+
+The following table records the completed Kinetic Atlas pass, before the orbital opening and current consistency revision. Its reduced-motion behavior and screenshot strategy were those of that earlier build.
 
 | Check | Observed result |
 | --- | --- |
@@ -23,13 +41,13 @@ This record separates tested behavior, supplied configuration and remaining work
 
 Automated browser emulation is not a real phone test or a complete accessibility certification. Safari, physical touch interaction and screen-reader use have not been verified.
 
-## Logo refresh
+## Historical logo refresh
 
 The starburst was replaced with an original TP monogram. The production build passed; the exported preview was checked for the same embedded SVG in its sidebar, login and favicon. Rendered sizes of 16, 24, 38 and 64 pixels were inspected, and the main screenshots and motion recording were refreshed. No application logic or dependencies changed in this branding update; the broader browser results above are from the preceding motion pass.
 
-## Orbital departure update
+## Historical Orbital departure update
 
-The topbar sample-data badge is removed. A finite Earth-to-destination opening now responds to native scrolling at all viewport widths. Three direct chapter controls, skip-to-workspace with keyboard focus, an OS-aware persistent motion choice, and an expanding arrival photograph accompany the original working desk.
+The topbar sample-data badge was removed. A finite Earth-to-destination opening responded to native scrolling at all viewport widths. Three direct chapter controls, skip-to-workspace with keyboard focus, an OS-aware persistent motion choice, and an expanding arrival photograph accompanied the original working desk. The current Unified Atlas removes that motion choice under the user's later instruction.
 
 The new `scripts/verify-orbit.mjs` passed 12 additional axe/layout cases in each browser: widths 320, 390, 700, 820, 1024 and 1440, route/arrival frames, a 640px-high laptop, and reduced motion. First-scroll visual changes, chapter buttons, featured detail, keyboard skip, persisted on/off, explicit opt-in under OS reduced motion, and navigation/remount passed. Chrome rendered the WebGL sphere and passed context loss/fallback/restoration. Firefox's Linux test environment did not expose WebGL and passed using the CSS photographic fallback. No Firefox WebGL validation is claimed. The original 13-case suite was also rerun in each browser: 50 automated axe/layout cases combined, with no reported violations or overflow. No external requests or page errors were recorded.
 
@@ -51,12 +69,15 @@ npm run build
 python ../scripts/export-preview.py
 node scripts/verify-design.mjs
 node scripts/verify-orbit.mjs
+node scripts/verify-consistency.mjs
 # On a compatible host with Playwright Firefox installed:
 $env:DESIGN_BROWSER = 'firefox'
 node scripts/verify-design.mjs
+node scripts/verify-orbit.mjs
+node scripts/verify-consistency.mjs
 ```
 
-The script writes screenshots and `design-verification.json` to `dashboard/test-results/design`, or to `DESIGN_SHOTS`. `PREVIEW_PATH` selects a different exported HTML file. The final handoff has separate Chrome and Firefox reports. Fonts, photographs and fictional records are embedded; the exporter never reads credentials.
+The design and orbit suites write their screenshots and reports under `dashboard/test-results/design`; the consistency suite defaults to `dashboard/test-results/consistency` and writes `consistency-verification.json` plus two contact sheets. `DESIGN_SHOTS` overrides the output directory for each suite, and `PREVIEW_PATH` selects a different exported HTML file. Use separate Chrome and Firefox output folders to preserve both sets of evidence. Fonts, photographs and fictional records are embedded; the exporter never reads credentials. Current scripts exercise the always-on motion policy; historical reduced-motion pass descriptions above do not describe the current behavior.
 
 ## Remaining live validation
 

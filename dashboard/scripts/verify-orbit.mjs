@@ -11,6 +11,11 @@ const browser = await (browserName === "firefox"
   ? firefox.launch()
   : chromium.launch({ channel: "chrome" }));
 const context = await browser.newContext();
+await context.addInitScript(() => {
+  // This suite chooses every scroll position itself. Browser restoration after
+  // reload must not race with those deliberate native-scroll commands.
+  history.scrollRestoration = "manual";
+});
 const page = await context.newPage();
 const errors = [],
   checks = [],
@@ -23,16 +28,37 @@ page.on("request", (r) => {
 const url = pathToFileURL(
   path.resolve(process.env.PREVIEW_PATH || "design-preview.html"),
 ).href;
-await page.goto(url);
-await page.locator(".orbit-earth").waitFor();
-await page.evaluate(async () => {
-  await document.fonts.ready;
-  for (const i of document.images) i.loading = "eager";
-  await Promise.all(
-    [...document.images].map((i) => i.decode().catch(() => {})),
+await page.goto(url, { waitUntil: "domcontentloaded" });
+async function ready() {
+  await page.locator(".orbit-earth").waitFor();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    for (const image of document.images) image.loading = "eager";
+    await Promise.all(
+      [...document.images].map((image) => image.decode().catch(() => {})),
+    );
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
+  });
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (animation) =>
+            !(animation.playState === "running" || animation.pending) ||
+            !Number.isFinite(animation.effect?.getComputedTiming().endTime),
+        ),
+    null,
+    { timeout: 10000 },
   );
-});
-await page.waitForTimeout(500);
+}
+async function reloadReady() {
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await ready();
+}
+await ready();
 async function scroll(p) {
   await page.locator(".orbital-intro").evaluate(
     (el, p) =>
@@ -45,7 +71,28 @@ async function scroll(p) {
       }),
     p,
   );
-  await page.waitForTimeout(120);
+  // Wait for the scroll coordinate and the rendered scene to agree. A timeout
+  // remains a failure; changing the DOM alone cannot satisfy this assertion.
+  await page.waitForFunction(
+    (expected) => {
+      const element = document.querySelector(".orbital-intro");
+      const stage = element?.querySelector(".orbit-stage");
+      if (!element || !stage) return false;
+      const span = Math.max(1, element.offsetHeight - stage.offsetHeight);
+      const actual = Math.max(
+        0,
+        Math.min(1, -element.getBoundingClientRect().top / span),
+      );
+      const painted = Number(element.style.getPropertyValue("--orbit-p"));
+      return (
+        Math.abs(actual - expected) < 0.003 &&
+        Math.abs(painted - expected) < 0.003 &&
+        stage.dataset.scVerifyState !== "initial"
+      );
+    },
+    p,
+    { timeout: 5000 },
+  );
 }
 async function shot(name) {
   await page.screenshot({ path: path.join(output, name + ".png") });
@@ -144,33 +191,55 @@ assert.equal(
   true,
 );
 await scroll(0);
-await page.getByRole("button", { name: "Enable orbital motion" }).click();
-await page.locator(".orbit-static").waitFor();
+assert.equal(
+  await page.getByRole("button", { name: "Enable orbital motion" }).count(),
+  0,
+  "The always-on experience must not show the retired motion toggle",
+);
+await page.evaluate(() =>
+  localStorage.setItem("travel-plan-orbit-motion", "off"),
+);
+await reloadReady();
+await page.locator(".orbit-motion").waitFor();
 assert.equal(
   await page
     .locator(".orbit-stage")
     .evaluate((e) => getComputedStyle(e).position),
-  "relative",
+  "sticky",
+  "A saved choice from an older preview must not disable the scene",
 );
-await page.reload();
-await page.locator(".orbit-static").waitFor();
-await page.evaluate(() => localStorage.removeItem("travel-plan-orbit-motion"));
-await page.emulateMedia({ reducedMotion: "reduce" });
-await page.reload();
-await page.locator(".orbit-static").waitFor();
-await shot("orbit-reduced");
-await audit(1440, "reduced motion");
-await page.getByRole("button", { name: "Enable orbital motion" }).click();
-await page.locator(".orbit-motion").waitFor();
+await scroll(0);
+const storedOffStart = await page
+  .locator(".orbit-stage")
+  .getAttribute("data-sc-verify-state");
 await scroll(0.44);
+assert.notEqual(
+  storedOffStart,
+  await page.locator(".orbit-stage").getAttribute("data-sc-verify-state"),
+);
+await page.emulateMedia({ reducedMotion: "reduce" });
+await reloadReady();
+await page.locator(".orbit-motion").waitFor();
+await scroll(0);
+const reducedStart = await page
+  .locator(".orbit-stage")
+  .getAttribute("data-sc-verify-state");
+await scroll(0.44);
+assert.notEqual(
+  reducedStart,
+  await page.locator(".orbit-stage").getAttribute("data-sc-verify-state"),
+  "Scroll motion remains enabled under the system reduced-motion preference",
+);
 assert.equal(
   await page.locator(".orbit-route-copy").getAttribute("aria-hidden"),
   "false",
 );
+assert.equal(await page.locator(".orbit-static").count(), 0);
+await shot("orbit-always-on");
+await audit(1440, "always on with legacy off and reduced-motion preference");
 await page.evaluate(() => localStorage.removeItem("travel-plan-orbit-motion"));
 await page.emulateMedia({ reducedMotion: "no-preference" });
-await page.reload();
-await page.waitForTimeout(500);
+await reloadReady();
 if (accelerated) {
   await page.evaluate(
     () =>
@@ -204,7 +273,7 @@ assert.equal(
 await page.getByRole("button", { name: "People", exact: true }).click();
 await page.getByRole("button", { name: "Overview", exact: true }).click();
 await page.locator(".orbit-motion").waitFor();
-await page.waitForTimeout(200);
+await ready();
 await scroll(0.44);
 assert.equal(
   await page.locator(".orbit-chapters [aria-current]").textContent(),
@@ -218,9 +287,10 @@ const result = {
   firstScrollAllWidths: true,
   chapterControls: true,
   skipFocus: true,
-  persistedMotionChoice: true,
-  systemReducedMotion: true,
-  explicitMotionOptIn: true,
+  alwaysOn: true,
+  legacySavedOffIgnored: true,
+  systemPreferenceDoesNotDisable: true,
+  retiredMotionToggleAbsent: true,
   contextLossFallback: accelerated,
   navigationRemount: true,
   checks,

@@ -18,7 +18,7 @@ await context.addInitScript(() => {
   Element.prototype.setPointerCapture = () => {};
 });
 const page = await context.newPage();
-await page.goto(pathToFileURL(preview).href);
+await page.goto(pathToFileURL(preview).href, { waitUntil: "domcontentloaded" });
 await page.locator(".launch-stage").waitFor();
 await page.evaluate(async () => {
   await document.fonts.ready;
@@ -27,6 +27,8 @@ await page.evaluate(async () => {
     [...document.images].map((i) => i.decode().catch(() => {})),
   );
 });
+const shot = (name) =>
+  page.screenshot({ path: path.join(output, name + ".png") });
 async function move(top, duration) {
   await page.evaluate(
     async ({ top, duration }) => {
@@ -74,6 +76,7 @@ async function scene(selector, stageSelector, progress, duration) {
   await move(top, duration);
 }
 await page.waitForTimeout(800);
+await shot("orbit-earth");
 for (const [progress, duration] of [
   [0.2, 1800],
   [0.44, 2300],
@@ -91,6 +94,13 @@ for (const [progress, duration] of [
     );
   await move(top, duration);
   if (progress === 0.44 || progress === 0.96) await page.waitForTimeout(500);
+  const name = new Map([
+    [0.2, "orbit-turn"],
+    [0.44, "orbit-route"],
+    [0.69, "orbit-descent"],
+    [0.96, "orbit-arrival"],
+  ]).get(progress);
+  await shot(name);
 }
 await scene(".launch-runway", ".launch-stage", 0, 1400);
 await scene(".launch-runway", ".launch-stage", 1, 4200);
@@ -102,62 +112,108 @@ await to('[data-route-stop="1"]', 1800, 220);
 await page.waitForTimeout(1100);
 await scene(".collection-runway", ".collection-stage", 0, 1900);
 await page.waitForTimeout(650);
+await shot("gallery-start");
 await scene(".collection-runway", ".collection-stage", 1, 4300);
 await page.waitForTimeout(650);
 await to(".desk-close", 1800, 80);
 await page.waitForTimeout(1300);
+await shot("scroll-close");
 const video = page.video();
 await context.close();
 await video.saveAs(path.join(output, "design-motion.webm"));
-const staticPage = await browser.newPage({
+const homePage = await browser.newPage({
   viewport: { width: 1440, height: 1000 },
-  reducedMotion: "reduce",
 });
-await staticPage.goto(pathToFileURL(preview).href);
-await staticPage.locator(".dispatch-cover").waitFor();
-await staticPage.evaluate(async () => {
+await homePage.goto(pathToFileURL(preview).href, {
+  waitUntil: "domcontentloaded",
+});
+await homePage.locator(".dispatch-cover").waitFor();
+await homePage.evaluate(async () => {
   await document.fonts.ready;
   for (const image of document.images) image.loading = "eager";
   await Promise.all(
     [...document.images].map((image) => image.decode().catch(() => {})),
   );
 });
-await staticPage.screenshot({
-  path: path.join(output, "dashboard-full.png"),
-  fullPage: true,
-});
-await staticPage.close();
+// Each panel is an unretouched viewport at a real native-scroll position.
+// Full-page screenshots cannot represent the active states of sticky scenes.
+const homeStages = [
+  ["Orbital departure", "home-orbital", ".orbital-intro"],
+  ["The departure desk", "home-departure-desk", ".dispatch-opening"],
+  ["Workspace at a glance", "home-metrics", ".desk-numbers"],
+  ["The itinerary", "home-itinerary", ".journey-reader"],
+  [
+    "The collection",
+    "home-collection",
+    ".collection-runway",
+    ".collection-stage",
+  ],
+  ["Where next", "home-closing", ".desk-close"],
+];
+for (const [, name, selector, stageSelector] of homeStages) {
+  await homePage.locator(selector).evaluate((element, stageSelector) => {
+    const stage = stageSelector ? element.querySelector(stageSelector) : null;
+    window.scrollTo({
+      top:
+        element.getBoundingClientRect().top +
+        scrollY -
+        30 +
+        (stage
+          ? Math.max(0, element.offsetHeight - stage.offsetHeight) * 0.42
+          : 0),
+      behavior: "instant",
+    });
+  }, stageSelector);
+  await homePage.waitForTimeout(1000);
+  await homePage.screenshot({ path: path.join(output, name + ".png") });
+}
+await homePage.close();
 const sheet = await browser.newPage({
   viewport: { width: 1600, height: 1800 },
 });
-const names = [
-  "orbit-earth",
-  "orbit-route",
-  "orbit-descent",
-  "orbit-arrival",
-  "gallery-start",
-  "scroll-close",
-];
-await sheet.setContent(
-  "<html><style>body{margin:0;padding:30px;background:#080e14;color:#f4f0e6;font:14px Arial}h1{font-size:26px;margin:0 0 20px}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}figure{margin:0}img{width:100%;height:480px;object-fit:contain;background:#080e14}figcaption{padding:8px 0;font-size:13px}</style><h1>Orbital departure · scroll sequence</h1><main>" +
-    names
-      .map(
-        (name) =>
-          '<figure><img src="data:image/png;base64,' +
-          fs.readFileSync(path.join(output, name + ".png")).toString("base64") +
-          '"><figcaption>' +
-          name.replaceAll("-", " ") +
-          "</figcaption></figure>",
-      )
-      .join("") +
-    "</main></html>",
+async function contactSheet(file, title, frames) {
+  await sheet.setContent(
+    "<html><style>body{margin:0;padding:30px;background:#080e14;color:#f4f0e6;font:14px Arial}h1{font-size:26px;margin:0 0 12px}p{color:#e7ab87;margin:0 0 24px}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}figure{margin:0}img{width:100%;height:480px;object-fit:contain;background:#080e14}figcaption{padding:8px 0;font-size:13px}</style><h1>" +
+      title +
+      "</h1><p>Original viewport captures at native scroll positions</p><main>" +
+      frames
+        .map(
+          ([name, label], index) =>
+            '<figure><img src="data:image/png;base64,' +
+            fs
+              .readFileSync(path.join(output, name + ".png"))
+              .toString("base64") +
+            '"><figcaption>' +
+            String(index + 1).padStart(2, "0") +
+            " / " +
+            label +
+            "</figcaption></figure>",
+        )
+        .join("") +
+      "</main></html>",
+  );
+  await sheet.evaluate(() =>
+    Promise.all([...document.images].map((i) => i.decode())),
+  );
+  await sheet.screenshot({
+    path: path.join(output, file + ".png"),
+    fullPage: true,
+  });
+}
+await contactSheet("scroll-contact-sheet", "Travel Plan · Scroll sequence", [
+  ["orbit-earth", "The world"],
+  ["orbit-route", "The route"],
+  ["orbit-descent", "The descent"],
+  ["orbit-arrival", "The arrival"],
+  ["gallery-start", "Saved journeys"],
+  ["scroll-close", "Where next"],
+]);
+await contactSheet(
+  "home-contact-sheet",
+  "Travel Plan · One continuous workspace",
+  homeStages.map(([label, name]) => [name, label]),
 );
-await sheet.evaluate(() =>
-  Promise.all([...document.images].map((i) => i.decode())),
-);
-await sheet.screenshot({
-  path: path.join(output, "scroll-contact-sheet.png"),
-  fullPage: true,
-});
 await browser.close();
-console.log("Kinetic scroll recording and contact sheet saved.");
+console.log(
+  "Scroll recording, motion contact sheet and Home contact sheet saved.",
+);

@@ -36,9 +36,74 @@ const settle = () =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       ),
   );
-const shot = (name, fullPage = false) =>
-  page.screenshot({ path: path.join(output, name + ".png"), fullPage });
-await page.goto(pathToFileURL(preview).href);
+async function waitForFiniteMotion() {
+  await settle();
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (animation) =>
+            !(animation.playState === "running" || animation.pending) ||
+            !Number.isFinite(animation.effect?.getComputedTiming().endTime),
+        ),
+    null,
+    { timeout: 10000 },
+  );
+  await settle();
+}
+const shot = (name) =>
+  page.screenshot({ path: path.join(output, name + ".png") });
+async function homeSection(name, selector) {
+  await page.locator(selector).evaluate((element) =>
+    window.scrollTo({
+      top: element.getBoundingClientRect().top + scrollY - 30,
+      behavior: "instant",
+    }),
+  );
+  await page.waitForTimeout(1000);
+  await shot(name);
+}
+async function homeContactSheet() {
+  const frames = [
+    ["home-orbital", "Orbital departure"],
+    ["home-departure-desk", "The departure desk"],
+    ["home-metrics", "Workspace at a glance"],
+    ["home-itinerary", "The itinerary"],
+    ["home-collection", "The collection"],
+    ["home-closing", "Where next"],
+  ];
+  const sheet = await browser.newPage({
+    viewport: { width: 1600, height: 1800 },
+  });
+  await sheet.setContent(
+    "<html><style>body{margin:0;padding:30px;background:#080e14;color:#f4f0e6;font:14px Arial}h1{font-size:26px;margin:0 0 12px}p{color:#e7ab87;margin:0 0 24px}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}figure{margin:0}img{width:100%;height:480px;object-fit:contain;background:#080e14}figcaption{padding:8px 0;font-size:13px}</style><h1>Travel Plan · One continuous workspace</h1><p>Original viewport captures at native scroll positions</p><main>" +
+      frames
+        .map(
+          ([name, label], index) =>
+            '<figure><img src="data:image/png;base64,' +
+            fs
+              .readFileSync(path.join(output, name + ".png"))
+              .toString("base64") +
+            '"><figcaption>' +
+            String(index + 1).padStart(2, "0") +
+            " / " +
+            label +
+            "</figcaption></figure>",
+        )
+        .join("") +
+      "</main></html>",
+  );
+  await sheet.evaluate(() =>
+    Promise.all([...document.images].map((image) => image.decode())),
+  );
+  await sheet.screenshot({
+    path: path.join(output, "home-contact-sheet.png"),
+    fullPage: true,
+  });
+  await sheet.close();
+}
+await page.goto(pathToFileURL(preview).href, { waitUntil: "domcontentloaded" });
 await page.locator(".dispatch-cover").waitFor();
 await page
   .getByRole("heading", { name: "The departure desk.", exact: true })
@@ -53,10 +118,12 @@ await page.evaluate(async () => {
 });
 await page.waitForTimeout(900);
 await shot("dashboard-desktop");
+await shot("home-orbital");
 const transform = (selector) =>
   page.locator(selector).evaluate((el) => getComputedStyle(el).transform);
 const first = await transform(".cover-photograph"),
   ticketFirst = await transform(".departure-ticket-plane");
+await homeSection("home-departure-desk", ".dispatch-opening");
 async function sceneAt(selector, progress, stageSelector) {
   await page.locator(selector).evaluate(
     (el, { progress, stageSelector }) => {
@@ -100,6 +167,8 @@ await page.mouse.move(
 await page.waitForTimeout(100);
 assert.notEqual(tiltStart, await transform(".dispatch-cover-wrap"));
 await page.mouse.move(1, 1);
+await homeSection("home-metrics", ".desk-numbers");
+await homeSection("home-itinerary", ".journey-reader");
 for (const [index, name] of [
   [0, "Ubud"],
   [1, "Uluwatu"],
@@ -128,6 +197,7 @@ assert.equal(
 await sceneAt(".collection-runway", 0, ".collection-stage");
 const railStart = await transform(".editorial-journeys");
 await shot("gallery-start");
+await shot("home-collection");
 await sceneAt(".collection-runway", 0.95, ".collection-stage");
 assert.notEqual(railStart, await transform(".editorial-journeys"));
 await shot("gallery-end");
@@ -184,6 +254,8 @@ assert.equal(
   "1",
 );
 await shot("scroll-close");
+await shot("home-closing");
+await homeContactSheet();
 await audit("Overview with motion", 1440);
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(200);
@@ -213,22 +285,27 @@ await page
 await shot("itinerary-desktop");
 await page.getByRole("button", { name: "Close dialog", exact: true }).click();
 await page.emulateMedia({ reducedMotion: "reduce" });
-await page.waitForFunction(
-  () =>
-    matchMedia("(prefers-reduced-motion: reduce)").matches &&
-    getComputedStyle(document.querySelector(".cover-photograph")).transform ===
-      "none",
-);
-assert.equal(await transform(".cover-photograph"), "none");
+await sceneAt(".launch-runway", 0.12, ".launch-stage");
+const alwaysOnCoverStart = await transform(".cover-photograph");
+const alwaysOnFrameStart = await transform(".dispatch-cover");
+await sceneAt(".launch-runway", 0.85, ".launch-stage");
+assert.notEqual(alwaysOnCoverStart, await transform(".cover-photograph"));
+assert.notEqual(alwaysOnFrameStart, await transform(".dispatch-cover"));
 assert.equal(
   await page
     .locator(".route-bookmark")
     .evaluate((el) => getComputedStyle(el).position),
-  "static",
+  "sticky",
 );
-await shot("reduced-motion");
-await shot("dashboard-full", true);
+await sceneAt(".collection-runway", 0, ".collection-stage");
+const alwaysOnRailStart = await transform(".editorial-journeys");
+await sceneAt(".collection-runway", 0.85, ".collection-stage");
+assert.notEqual(alwaysOnRailStart, await transform(".editorial-journeys"));
+await shot("always-on-motion");
 async function audit(screen, width) {
+  // Audit the completed finite entry/reveal state without disabling animation
+  // or altering its timing. Scroll-driven transforms stay active throughout.
+  await waitForFiniteMotion();
   assert(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -256,7 +333,6 @@ for (const width of [1440, 390, 320]) {
   if (width === 390) {
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await shot("dashboard-mobile");
-    await shot("dashboard-mobile-full", true);
   }
   await audit("Overview", width);
 }
@@ -370,7 +446,7 @@ fs.writeFileSync(
         mobileNativeGallery: true,
         routeSelection: true,
         routeNavigation: true,
-        reducedMotionStatic: true,
+        alwaysOnUnderSystemReducedMotion: true,
       },
       workflows: {
         create: true,

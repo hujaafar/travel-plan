@@ -12,6 +12,7 @@ import "./style.css";
 import "./editorial.css";
 import "./kinetic.css";
 import "./orbit.css";
+import "./atlas.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

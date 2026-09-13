@@ -1,9 +1,7 @@
 import { useEffect, type RefObject } from "react";
 const clamp = (value: number, min = 0, max = 1) =>
   Math.max(min, Math.min(max, value));
-const desktopMotion = () =>
-  matchMedia("(min-width: 981px) and (prefers-reduced-motion: no-preference)")
-    .matches;
+const desktopMotion = () => matchMedia("(min-width: 981px)").matches;
 
 /** Bring a rail card into view for a button or keyboard focus, using native scrolling. */
 export function scrollToJourney(
@@ -16,10 +14,7 @@ export function scrollToJourney(
   const cards = rail?.querySelectorAll<HTMLElement>("[data-journey-card]");
   if (!rail || !viewport || !cards?.length) return;
   index = Math.round(clamp(index, 0, cards.length - 1));
-  const behavior =
-    instant || matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "instant"
-      : "smooth";
+  const behavior = instant ? "instant" : "smooth";
   if (desktopMotion()) {
     const distance =
       parseFloat(rail.style.getPropertyValue("--rail-distance")) || 0;
@@ -33,8 +28,6 @@ export function scrollToJourney(
     });
   } else {
     viewport.scrollTo({ left: cards[index].offsetLeft, behavior });
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches)
-      cards[index].scrollIntoView({ block: "nearest", behavior: "instant" });
   }
 }
 
@@ -48,7 +41,6 @@ export function useScrollScene(
   useEffect(() => {
     const scene = root.current;
     if (!scene) return;
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     const desktop = matchMedia("(min-width: 981px)");
     const fine = matchMedia("(pointer: fine)");
     const acts = [...scene.querySelectorAll<HTMLElement>("[data-sc-act]")];
@@ -78,8 +70,7 @@ export function useScrollScene(
       frame = 0;
       if (!scene || document.hidden) return;
       const height = innerHeight,
-        motion = !reduced.matches,
-        pinned = motion && desktop.matches;
+        pinned = desktop.matches;
       if (needsMeasure && rail && stage && viewport) {
         const last = cards.at(-1);
         distance = Math.max(
@@ -104,11 +95,7 @@ export function useScrollScene(
       for (const act of acts) {
         const box = act.getBoundingClientRect();
         if (box.bottom < -height || box.top > height * 2) continue;
-        set(
-          act,
-          "--sc-p",
-          motion ? clamp((height - box.top) / (height + box.height)) : 0.35,
-        );
+        set(act, "--sc-p", clamp((height - box.top) / (height + box.height)));
       }
       if (flight && launch) {
         const box = flight.getBoundingClientRect();
@@ -116,9 +103,7 @@ export function useScrollScene(
           ? clamp(
               (22 - box.top) / Math.max(1, box.height - launch.offsetHeight),
             )
-          : motion
-            ? clamp((height * 0.7 - box.top) / (box.height + height * 0.3))
-            : 0;
+          : clamp((height * 0.7 - box.top) / (box.height + height * 0.3));
         set(flight, "--flight", progress);
         if (plane) {
           const t = progress,
@@ -169,18 +154,14 @@ export function useScrollScene(
         set(
           ticker,
           "--ticker",
-          motion ? clamp((height - box.top) / (height + box.height)) : 0.5,
+          clamp((height - box.top) / (height + box.height)),
         );
       }
       let current = 0;
       stops.forEach((stop, index) => {
         const box = stop.getBoundingClientRect();
         if (box.top < height * 0.52) current = index;
-        set(
-          stop,
-          "--stop-entry",
-          motion ? clamp((height - box.top) / (height * 0.8)) : 1,
-        );
+        set(stop, "--stop-entry", clamp((height - box.top) / (height * 0.8)));
       });
       if (current !== selected) {
         selected = current;
@@ -271,7 +252,6 @@ export function useScrollScene(
     launch?.addEventListener("pointerleave", leave);
     scene.addEventListener("focusin", focus);
     document.addEventListener("visibilitychange", measure);
-    reduced.addEventListener("change", measure);
     desktop.addEventListener("change", measure);
     schedule();
     return () => {
@@ -285,7 +265,6 @@ export function useScrollScene(
       launch?.removeEventListener("pointerleave", leave);
       scene.removeEventListener("focusin", focus);
       document.removeEventListener("visibilitychange", measure);
-      reduced.removeEventListener("change", measure);
       desktop.removeEventListener("change", measure);
       scene.classList.remove("motion-ready");
     };

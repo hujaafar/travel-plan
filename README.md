@@ -2,13 +2,13 @@
 
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
-**Current laptop status:** the redesigned frontend builds and passes Chrome and Linux Firefox design checks. A self-contained interactive preview works without Docker. Docker remains offline after a disk-full interruption and a stale-socket startup error. See [verification status](docs/VERIFICATION.md) for the exact scope and remaining infrastructure work.
+**Current laptop status:** Unified Atlas passed 110 accessibility/layout cases across Chrome and Linux Firefox, covering every page, forms, always-on motion and preview editing workflows. The production build and four frontend unit tests passed. A self-contained interactive preview works without Docker. Docker remains offline after a disk-full interruption and a stale-socket startup error. See [verification status](docs/VERIFICATION.md) for evidence and remaining live-service work.
 
-The Kinetic Atlas advances the requested Scroll Craft design: an expanding pinned departure scene, a drawn flight path, independently moving ticket and photograph, pointer depth, travelling destination type, a dark itinerary spread, a horizontal gallery with perspective, and an oversized orbital close. Native scrolling controls the scenes. Mobile uses a swipeable gallery; reduced motion restores normal document flow.
+Unified Atlas carries the requested Scroll Craft design through one consistent product: an Earth-to-destination opening, expanding departure photograph, drawn route, independent ticket, itinerary spread, dimensional gallery and orbital close, followed by administration pages using the same ink, ivory and copper palette. Shared headings, buttons, tables, forms, calendar, settings, help and login follow the same visual system. Native scrolling controls the scenes; mobile uses a swipeable gallery. Motion is always enabled at the user's explicit request, including when an old off choice is stored or the OS requests reduced motion. Direct chapters and skip controls remain available.
 
 ## Open the design without Docker
 
-The supplied `Travel-Plan-Preview.html` can be opened directly in Chrome or Firefox. It contains the complete built interface, fonts and photographs, plus explicitly labelled fictional sample data. Forms save only in that browser's local storage. It makes no external requests, does not authenticate real users and cannot contact payment providers.
+The supplied `Travel-Plan-Preview.html` can be opened directly in Chrome or Firefox. It contains the complete built interface, fonts and photographs, plus fictional sample data. Its sample scope is explained in login, help and the handoff; the topbar preview badge was removed at the user's request. Forms save only in that browser's local storage. It makes no external requests, does not authenticate real users and cannot contact payment providers.
 
 To regenerate and verify the preview from source:
 
@@ -18,12 +18,16 @@ npm ci
 npm run build
 python ../scripts/export-preview.py
 node scripts/verify-design.mjs
+node scripts/verify-orbit.mjs
+node scripts/verify-consistency.mjs
 # Requires Playwright's Firefox and its operating-system dependencies:
 $env:DESIGN_BROWSER = 'firefox'
 node scripts/verify-design.mjs
+node scripts/verify-orbit.mjs
+node scripts/verify-consistency.mjs
 ```
 
-Preview results are separate from the real-service end-to-end suite below. The browser test covers the expanding frame, SVG flight path, pointer depth, independent layers, itinerary selection, horizontal gallery movement, keyboard focus, mobile swiping, reduced motion, five viewport widths, six screens, local travel CRUD, empty/single-plan layouts, persistence and CSV export. Run `node scripts/record-design.mjs` after the tests to record the scroll sequence and assemble its contact sheet.
+Preview results are separate from the real-service end-to-end suite below. The design and orbit scripts cover scroll layers, SVG routes, pointer depth, itinerary selection, gallery movement, keyboard focus, mobile swiping, the always-on motion policy, local travel CRUD, empty/single-plan layouts, persistence and CSV export. The consistency suite adds desktop/mobile coverage of all pages, lower Home sections, editors, details, help and sign-in, with paired contact sheets and recorded palette values. Run `node scripts/record-design.mjs` after the tests to record the scroll sequence. See the verification record for which checks have completed on the current revision.
 
 ## Start on this Windows laptop
 
@@ -54,7 +58,7 @@ Bootstrap generates per-service TLS certificates, isolated database credentials,
 - **Payments:** Stripe/PayPal gateway CRUD, currency, enablement, sandbox credential status, and provider credential verification. No card data is handled by this application.
 - **Calendar:** month navigation, day selection, and real itinerary dates.
 - **Authentication:** eight-hour revocable server sessions, secure HttpOnly cookies, BCrypt passwords, CSRF checks, login throttling, role-based permissions, and immediate user suspension/deletion enforcement.
-- **Responsive UI:** keyboard-accessible native dialogs, reduced motion support, mobile navigation, accessible labels and focus states.
+- **Responsive UI:** keyboard-accessible native dialogs, mobile navigation, shared page and form treatments, accessible labels and focus states, and direct controls for the always-enabled scroll scenes.
 
 Payment capture, refunds, booking checkout, and signed provider webhooks belong to the next phase. This project administers and verifies payment gateways; it does not pretend to collect money. Supply your own sandbox credentials to run the external provider checks.
 
@@ -94,7 +98,7 @@ npm test
 npm run test:e2e
 ```
 
-The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow, reduced motion, and WCAG accessibility rules. Browser tests do not make real payments. They create and clean up their own records.
+The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow and WCAG accessibility rules. It has not been rerun against this frontend revision while Docker is offline. Browser tests do not make real payments. They create and clean up their own records.
 
 Use `scripts/verify-infrastructure.py` for verified internal TLS, PostgreSQL transport enforcement, and graph projection checks. [VERIFICATION.md](docs/VERIFICATION.md) records the latest observed results and limitations.
 

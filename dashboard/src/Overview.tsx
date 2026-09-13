@@ -68,9 +68,7 @@ export default function Overview({
     );
     if (!target) return;
     target.scrollIntoView({
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
+      behavior: "smooth",
       block: "center",
     });
     target.focus({ preventScroll: true });
