@@ -10,11 +10,12 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
+from secret_permissions import prepare_secret_storage, publish_runtime_exports
 
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 S = ROOT / ".secrets"
-S.mkdir(exist_ok=True)
+prepare_secret_storage(S, ROOT / ".env")
 state = S / "bootstrap.json"
 if state.exists():
     config = json.loads(state.read_text())
@@ -65,6 +66,7 @@ state.write_text(json.dumps(config, indent=2))
 from certificates import generate
 
 generate(S, config["TLS_PASSWORD"])
+publish_runtime_exports(S)
 subprocess.run(
     ["docker", "compose", "up", "-d", "postgres", "neo4j", "vault"], check=True
 )
@@ -212,5 +214,6 @@ for service in ["identity", "travel", "payments"]:
             "secret_id"
         ]
     )
+publish_runtime_exports(S)
 print("Bootstrap complete. Login details: .secrets/admin-login.txt")
 print("Run docker compose up -d --build to start the dashboard and service replicas.")

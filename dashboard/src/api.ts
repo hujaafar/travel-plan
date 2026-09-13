@@ -7,12 +7,13 @@ export async function api<T = void>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
+  const requestCsrf = csrf;
   const response = await fetch("/api" + path, {
     method,
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-      ...(csrf ? { "X-CSRF-Token": csrf } : {}),
+      ...(requestCsrf ? { "X-CSRF-Token": requestCsrf } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -20,7 +21,11 @@ export async function api<T = void>(
     const data = await response.json().catch(() => ({
       message: "The service is temporarily unavailable. Please try again.",
     }));
-    if (response.status === 401 && !path.includes("login"))
+    if (
+      response.status === 401 &&
+      !path.includes("login") &&
+      requestCsrf === csrf
+    )
       window.dispatchEvent(new Event("session-expired"));
     throw new Error(data.message || "Request failed");
   }

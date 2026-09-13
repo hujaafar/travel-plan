@@ -29,7 +29,12 @@ pipeline {
         }
       }
     }
+    stage('Provisioning unit tests') {
+      steps { sh 'python3 -m unittest discover -s scripts/tests -v' }
+    }
     stage('SonarQube analysis') {
+      // Community Build analyzes the main branch only. Keep PR results isolated.
+      when { branch 'main' }
       steps {
         withSonarQubeEnv('travel-plan-sonar') {
           sh 'mvn -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:5.5.0.6356:sonar -Dsonar.projectKey=travel-plan'
@@ -37,13 +42,19 @@ pipeline {
       }
     }
     stage('Quality gate') {
+      when { branch 'main' }
       steps {
         timeout(time: 10, unit: 'MINUTES') {
           waitForQualityGate abortPipeline: true
         }
       }
     }
-    stage('Container build') { steps { sh 'docker compose build' } }
+    stage('Container build') {
+      steps {
+        // Build-only model: PR jobs never need runtime credentials or bootstrap.
+        sh 'docker compose -f compose.build.yml build'
+      }
+    }
     stage('Integration and browsers') {
       when { not { changeRequest() } }
       steps {

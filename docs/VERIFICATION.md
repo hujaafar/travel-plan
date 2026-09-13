@@ -1,4 +1,12 @@
-# Verification record · 13 September 2026
+# Verification record · updated 14 September 2026
+
+## Latest assignment audit
+
+See `docs/FINAL-AUDIT.md` for the complete requirement matrix and outstanding submission gaps. On 14 September, Maven `verify` passed **26 Java tests** and repackaged all three services. The frontend passed **12 Vitest tests**, TypeScript/Vite production build and formatting. Six provisioning permission tests passed on native Linux temporary files; Docker/real secrets were not touched by those tests. The current npm audit reported zero vulnerabilities. Runtime and tools Compose configurations validated; the new image-build-only model also validated with an empty environment.
+
+The audit fixed administrator re-creation on restart, null itinerary validation, secret-dependent CI builds, Community Sonar branch scoping, Linux provisioning permissions, unsupported Ansible platform claims, fractional-price display, stale profile metadata, misleading gateway status and session state cleanup. Database upgrade/concurrent startup and the newly authored live session-cleanup test still require a running Docker environment. Existing motion evidence below comes from the preceding design pass; the final audit handoff records the refreshed consistency and form-submission browser results.
+
+Final browser reruns passed in Chrome 152 and Linux Firefox 155: five portable admin form/regression flows per browser and 30 visual consistency screens per browser. All 60 consistency screens reported zero axe violations and document overflow; both form runs reported zero page errors and external requests. `verify-admin-flows.mjs` submits person/gateway forms and exercises cents, self-edit and expired-draft behavior. Motion source was unchanged; the prior orbital/design suites below were not rerun in this audit.
 
 This record separates tested behavior, supplied configuration and remaining work. The current Unified Atlas revision applies one dark palette, shared headings and component treatments across Home, every operational page, forms, help and login. Motion remains enabled under the user's explicit request, including when an old motion-off choice is stored or the OS requests reduced motion. The historical sections below retain earlier evidence and the earlier motion policy; they are not claims that those builds are the current interface.
 
@@ -15,6 +23,12 @@ This record separates tested behavior, supplied configuration and remaining work
 | Backend and deployment | Not rerun for this design revision. The portable sample checks do not verify live Java services, authentication, payment-provider connectivity or infrastructure availability. Existing Docker and deployment limitations below still apply. |
 
 Page entry animation now translates fully opaque content, maintaining text contrast throughout entry. A Firefox test-readiness race around preview restoration was corrected before the successful final run. See `scrollcraft/builds/unified-atlas/BRIEF.md` and `REPORT.md` for the design contract and current evidence. Source-archive packaging remains a separate final step; no archive status is asserted here.
+
+## Assignment audit follow-up — 14 September 2026
+
+The live `dashboard/e2e/workspace.spec.ts` now includes a focused session-cleanup regression: expire a session with an editor, detail or delete dialog open, sign back in without reloading, and temporarily hold the data requests to verify that old dialogs and cached records do not return. This new real-service case has been authored but has not been executed against the current Java deployment. Portable-preview authentication behavior is not evidence of server expiry enforcement.
+
+One resilience gap remains: `App.refresh()` fetches travel, user and gateway data together using `Promise.all`. If one service fails, the successful responses are not applied, so a payment-service outage can prevent otherwise available travel/user data from appearing. Per-service refresh and partial availability remain future work; this audit leaves that behavior unchanged.
 
 ## Historical Kinetic Atlas verification
 

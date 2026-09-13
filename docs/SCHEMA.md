@@ -16,6 +16,7 @@ erDiagram
 | `identity.users` | UUID PK, unique normalized email, name, BCrypt hash, role enum, status enum, creation timestamp |
 | `identity.sessions` | SHA-256 token hash PK, user FK, CSRF token, expiry |
 | `identity.login_attempts` | normalized email PK, failure counter, lock deadline |
+| `identity.bootstrap_state` | One durable initialization marker; runtime can read/insert but cannot reset/delete it |
 | `travel.travels` | UUID PK, dates with end >= start, nonnegative decimal price, positive capacity, status, asset key, version |
 | `travel.stops` | composite PK `(travel_id, position)`, destination, country, activities, accommodation, transport |
 | `travel.participants` | composite PK `(travel_id, user_id)`; membership is unique |
@@ -41,4 +42,6 @@ Country is part of the destination identity, so equally named places in differen
 
 ## Initialization and changes
 
-`infra/postgres/000-roles.sql` is generated privately as `.secrets/000-roles.sql`. The checked-in `001-schema.sql` and `002-sample.sql` run only for a new PostgreSQL volume. `003-runtime-privileges.sql` is idempotent and is applied by bootstrap to restrict service roles. Do not delete the volume to apply future migrations. Add reviewed forward migrations and a migration journal as the schema evolves.
+`infra/postgres/000-roles.sql` is generated privately as `.secrets/000-roles.sql`. The checked-in `001-schema.sql` and `002-sample.sql` run only for a new PostgreSQL volume. `003-runtime-privileges.sql` is idempotent and is applied by bootstrap to restrict service roles and add/backfill the durable identity initialization marker. Run `python scripts/bootstrap.py` before deploying the updated identity service to an existing database. Ansible already performs that step; `docker compose up` alone does not migrate an existing volume. Do not delete the volume to apply changes.
+
+Identity first startup holds a PostgreSQL transaction advisory lock and creates its initial administrator only for an empty, uninitialized store. Once marked, restarting replicas cannot recreate a deliberately deleted administrator. The marker and initial account commit atomically. Existing stores containing users are marked without changing those accounts. Add reviewed forward migrations and a migration journal as the schema evolves.

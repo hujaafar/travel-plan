@@ -11,8 +11,10 @@
   pre_tasks:
     - name: Verify supported operating system
       ansible.builtin.assert:
-        that: ansible_facts.os_family == 'Debian'
-        fail_msg: This provisioning playbook targets Debian or Ubuntu hosts.
+        that:
+          - ansible_facts.distribution == 'Ubuntu'
+          - ansible_facts.distribution_release in ['jammy', 'noble']
+        fail_msg: This package recipe supports Ubuntu 22.04 LTS or 24.04 LTS with the universe repository enabled.
     - name: Install system prerequisites
       ansible.builtin.apt:
         name:

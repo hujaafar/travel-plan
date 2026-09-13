@@ -17,15 +17,24 @@ Jenkins: `https://localhost:18443`, admin password `JENKINS_ADMIN_PASSWORD` in `
 
 SonarQube: `https://localhost:19443`. Complete the vendor's initial account setup and change its initial password before exposing it. Create project `travel-plan`; add a project-scoped analysis token to Jenkins as a SonarQube server named `travel-plan-sonar`. Configure the SonarQube webhook to the Jenkins `/sonarqube-webhook/` endpoint and validate TLS trust. The services can reach each other through the Docker egress network using their service names, while host ports remain loopback-bound.
 
+The supplied SonarQube Community Build supports main-branch analysis. In the Jenkins multibranch job, **both Sonar analysis and its quality-gate wait run only on `main`**. PR and other feature-branch jobs skip both stages, so they neither request unsupported PR analysis nor publish their code into the main Sonar project. They still run Java units, dashboard build/unit/format checks, dependency auditing, and container builds. Require these Jenkins checks and an independent human review before merging. The Community main-branch gate runs after the merge and blocks staging deployment; it does not provide a pre-merge Sonar PR gate. Meeting a review requirement for Sonar analysis on every PR needs a supported PR-analysis offering and its Git-host integration, configured separately. No license, cloud project, or independent approval has been supplied. See the current [SonarQube feature comparison](https://docs.sonarsource.com/sonarqube-community-build/feature-comparison-table).
+
 SonarQube may require a larger Linux `vm.max_map_count` and at least 2 GB memory. Do not change the host sysctl blindly: follow the vendor's deployment requirements. Running the entire tools profile alongside the dashboard may exceed a laptop's memory budget.
 
-The Jenkinsfile builds and tests Java, builds/tests/formats the dashboard, audits npm dependencies, runs Sonar analysis, and blocks on its quality gate. It builds containers and runs integration/browser tests for trusted non-PR builds on a disposable agent. Deployment runs only for main with `DEPLOY_STAGING=true`, a successful gate, and an explicit Jenkins input approval. Configure `travel-plan-deploy` SSH credentials and `STAGING_INVENTORY` before enabling it. A clean pipeline and a review approval must precede merging; this file alone cannot enforce Git-host policy.
+Container builds use `compose.build.yml`, a separate model with the same image tags, Dockerfiles and build arguments as the runtime deployment, without runtime secrets, mounts or ports. A fresh PR checkout can build it without bootstrapping Vault or receiving production credentials:
+
+```bash
+docker compose -f compose.build.yml config --quiet
+docker compose -f compose.build.yml build
+```
+
+Trusted non-PR builds initialize disposable development credentials and run integration/browser tests on a disposable agent. Deployment runs only for main with `DEPLOY_STAGING=true`, a successful main-branch Sonar gate, and an explicit Jenkins input approval. Configure `travel-plan-deploy` SSH credentials and `STAGING_INVENTORY` before enabling it. A clean PR pipeline and an independent review approval must precede merging; this file alone cannot enforce Git-host policy. Configuration validation does not demonstrate a completed Jenkins pipeline, Sonar gate, or deployment.
 
 Official references: [Jenkins quality-gate integration](https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/ci-integration/jenkins-integration/pipeline-pause), [Docker Compose Ansible module](https://docs.ansible.com/projects/ansible/latest/collections/community/docker/docker_compose_v2_module.html).
 
 ## Ansible
 
-Use a Linux Ansible controller. The playbook targets Debian/Ubuntu deployment hosts, creates a private directory, installs prerequisites, imports a reviewed source archive, provisions local development secrets, and starts the system with the requested replica count.
+Use a Linux Ansible controller. The supplied package recipe supports **Ubuntu 22.04 LTS (jammy) and 24.04 LTS (noble)** with the universe repository enabled, where `docker-compose-v2` is available. An explicit preflight rejects Debian and other releases before changing packages; they need a distribution-specific provisioning recipe. This declared support has not yet been demonstrated by an executed Ansible deployment. The playbook creates a private directory, installs prerequisites, imports a reviewed source archive, provisions local development secrets, and starts the system with the requested replica count.
 
 ```bash
 ansible-galaxy collection install -r infra/ansible/requirements.yml

@@ -12,6 +12,8 @@ docker compose stop
 
 Stopping preserves data. Do not run `down -v` unless intentionally destroying the development databases and Vault. After restarting Vault, run bootstrap to unseal it before starting the agents. The startup script does this. App processes wait for scoped configuration before launching; readiness probes are HTTPS.
 
+For the 14 September identity update, run `python scripts/bootstrap.py` before starting new identity replicas. Its idempotent database upgrade adds/backfills `identity.bootstrap_state`, which prevents a restart from recreating a deleted bootstrap administrator. The Ansible playbook runs this upgrade automatically. Starting Compose alone does not apply it to an existing database; preserve the database volume.
+
 ## Local TLS
 
 The generated development root is `.secrets/ca.crt`. The application does not silently install a root certificate in Windows. You may import that certificate into your own development browser/OS trust store after inspecting its identity. Alternatively, inspect the local development certificate warning when opening localhost. Do not use this development CA for public deployments.

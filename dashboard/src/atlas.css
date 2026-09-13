@@ -338,7 +338,8 @@ button:disabled {
 }
 .badge.published,
 .badge.active,
-.badge.connected {
+.badge.connected,
+.badge.configured {
   color: #bde0c8;
   background: #21372f;
   border-color: #435e50;
@@ -351,6 +352,7 @@ button:disabled {
 }
 .badge.archived,
 .badge.not_connected,
+.badge.not_configured,
 .badge.viewer {
   color: #b8c6cf;
   background: #22313a;

@@ -1,3 +1,11 @@
+-- This file is reapplied by scripts/bootstrap.py before service deployment.
+-- Preserve existing installations: an existing user store is already initialized,
+-- even when its original administrator has subsequently been removed.
+CREATE TABLE IF NOT EXISTS identity.bootstrap_state(singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),initialized_at timestamptz NOT NULL DEFAULT now());
+INSERT INTO identity.bootstrap_state(singleton)
+SELECT true WHERE EXISTS (SELECT 1 FROM identity.users)
+ON CONFLICT DO NOTHING;
+
 DO $$
 DECLARE svc text; t record;
 BEGIN
@@ -14,3 +22,5 @@ BEGIN
   EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA %I TO %I',svc,svc);
  END LOOP;
 END $$;
+-- Runtime code may create/read the one-time marker, never erase or reset it.
+REVOKE UPDATE, DELETE ON identity.bootstrap_state FROM identity;

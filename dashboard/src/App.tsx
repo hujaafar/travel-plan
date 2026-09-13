@@ -52,6 +52,7 @@ import {
   matchesTravel,
   csvCell,
   photo,
+  reconcileSessionUser,
 } from "./types";
 type Page =
   "overview" | "travels" | "users" | "payments" | "calendar" | "settings";
@@ -240,6 +241,9 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   );
 }
 export default function App() {
+  const sessionRevision = useRef(0);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const revisionAtRender = sessionRevision.current;
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -266,26 +270,61 @@ export default function App() {
   const canTravel = user?.role !== "VIEWER";
   const admin = user?.role === "ADMIN";
   const notify = (message: string) => {
+    if (revisionAtRender !== sessionRevision.current) return;
+    window.clearTimeout(toastTimer.current);
     setToast(message);
-    window.setTimeout(() => setToast(""), 4500);
+    toastTimer.current = window.setTimeout(() => setToast(""), 4500);
   };
+  function clearSession() {
+    sessionRevision.current += 1;
+    window.clearTimeout(toastTimer.current);
+    setUser(null);
+    setCsrf("");
+    setTravels([]);
+    setUsers([]);
+    setGateways([]);
+    setEditor(null);
+    setDetail(null);
+    setRemove(null);
+    setSearch("");
+    setFilter("ALL");
+    setPage("overview");
+    setMenu(false);
+    setHelp(false);
+    setToast("");
+    setError("");
+    setLoading(false);
+    setDeleting(false);
+    setCalendarDate(new Date());
+    setActiveDay(null);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
   const login = (u: User) => {
+    sessionRevision.current += 1;
     setUser(u);
     setCsrf(u.csrf || "");
   };
   useEffect(() => {
+    let active = true;
+    const revision = sessionRevision.current;
     api<User>("/auth/me")
-      .then(login)
+      .then((u) => {
+        if (active && revision === sessionRevision.current) login(u);
+      })
       .catch(() => {})
-      .finally(() => setChecking(false));
-    const expire = () => {
-      setUser(null);
-      setCsrf("");
-    };
+      .finally(() => {
+        if (active) setChecking(false);
+      });
+    const expire = () => clearSession();
     window.addEventListener("session-expired", expire);
-    return () => window.removeEventListener("session-expired", expire);
+    return () => {
+      active = false;
+      window.clearTimeout(toastTimer.current);
+      window.removeEventListener("session-expired", expire);
+    };
   }, []);
   async function refresh() {
+    const revision = sessionRevision.current;
     setLoading(true);
     setError("");
     try {
@@ -294,18 +333,20 @@ export default function App() {
         api<User[]>("/users"),
         api<Gateway[]>("/payments"),
       ]);
+      if (revision !== sessionRevision.current) return;
       setTravels(t);
       setUsers(u);
       setGateways(g);
+      setUser((current) => reconcileSessionUser(current, u));
     } catch (e) {
-      setError((e as Error).message);
+      if (revision === sessionRevision.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (revision === sessionRevision.current) setLoading(false);
     }
   }
   useEffect(() => {
     if (user) refresh();
-  }, [user]);
+  }, [user?.id]);
   function navigate(p: Page) {
     setPage(p);
     setSearch("");
@@ -318,13 +359,14 @@ export default function App() {
     setDeleting(true);
     try {
       await api("/" + remove.kind + "/" + remove.id, "DELETE");
+      if (revisionAtRender !== sessionRevision.current) return;
       setRemove(null);
       await refresh();
       notify("Record deleted");
     } catch (e) {
       notify((e as Error).message);
     } finally {
-      setDeleting(false);
+      if (revisionAtRender === sessionRevision.current) setDeleting(false);
     }
   }
   function exportPlans() {
@@ -830,7 +872,7 @@ export default function App() {
                       </div>
                       <div className="payment-controls">
                         <Badge
-                          value={g.configured ? "CONNECTED" : "NOT_CONNECTED"}
+                          value={g.configured ? "CONFIGURED" : "NOT_CONFIGURED"}
                         />
                         <div className="row-actions">
                           <button
@@ -883,8 +925,8 @@ export default function App() {
                   <HelpCircle size={18} />
                   <p>
                     Provider credentials are managed securely by your deployment
-                    administrator. Connection status reflects whether sandbox
-                    credentials are configured.
+                    administrator. Configured means credentials are present; use
+                    Test connection to verify them with the provider.
                   </p>
                 </div>
               </>
@@ -1127,8 +1169,8 @@ export default function App() {
                     onClick={async () => {
                       try {
                         await api("/auth/logout", "POST");
-                        setUser(null);
-                        setCsrf("");
+                        if (revisionAtRender === sessionRevision.current)
+                          clearSession();
                       } catch (e) {
                         notify((e as Error).message);
                       }
@@ -1171,6 +1213,7 @@ export default function App() {
           users={users}
           onClose={() => setEditor(null)}
           onSaved={async () => {
+            if (revisionAtRender !== sessionRevision.current) return;
             setEditor(null);
             await refresh();
             notify("Changes saved");

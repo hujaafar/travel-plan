@@ -120,6 +120,60 @@ test("itinerary editor creates, edits, searches, and deletes persisted plans", a
   await expect(page.getByText("No journeys found")).toBeVisible();
 });
 
+test("session expiry clears open dialogs and the next sign-in starts with fresh workspace data", async ({
+  page,
+}) => {
+  await signIn(page);
+  for (const dialog of ["editor", "detail", "delete"]) {
+    await page
+      .locator(".sidebar")
+      .getByRole("button", { name: "Travel plans", exact: true })
+      .click();
+    if (dialog === "editor") {
+      await page
+        .getByRole("button", { name: "Create travel plan", exact: true })
+        .click();
+      await page
+        .getByLabel("Travel plan name")
+        .fill("Unsaved previous-session draft");
+    } else {
+      await page
+        .getByRole("button", {
+          name: dialog === "detail" ? /^View / : /^Delete /,
+        })
+        .first()
+        .click();
+    }
+    await expect(page.getByRole("dialog")).toBeVisible();
+    // Exercise the same event api.ts emits on an expired authenticated request.
+    // This tests local session cleanup, not the server's expiration policy.
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event("session-expired")),
+    );
+    await expect(page.locator(".login-form")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    const pending: Array<() => Promise<void>> = [];
+    const dataRoutes = /\/api\/(travels|users|payments)$/;
+    await page.route(dataRoutes, async (route) => {
+      pending.push(() => route.continue());
+    });
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.locator(".app")).toHaveAttribute("data-page", "overview");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator(".metric").first().locator("strong")).toHaveText(
+      "00",
+    );
+    await expect.poll(() => pending.length).toBe(3);
+    await page.unroute(dataRoutes);
+    await Promise.all(pending.map((resume) => resume()));
+    await expect(
+      page.locator(".metric").first().locator("strong"),
+    ).not.toHaveText("00");
+  }
+});
+
 test("phone layout, reduced motion, and accessibility", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });

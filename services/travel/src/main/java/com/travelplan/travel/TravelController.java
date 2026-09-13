@@ -37,7 +37,7 @@ public class TravelController {
       @Min(1) @Max(10000) int capacity,
       @Size(max = 1000) String description,
       @NotBlank String image,
-      @NotEmpty @Size(max = 30) List<@Valid Stop> stops,
+      @NotEmpty @Size(max = 30) List<@NotNull @Valid Stop> stops,
       @Size(max = 10000) List<UUID> participantIds,
       int version) {}
 
