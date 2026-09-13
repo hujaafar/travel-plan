@@ -28,7 +28,7 @@ The rejected fingerprint remains in the registry. The initial redesign differs i
 
 ## Photography and assets
 
-Cover photographs are illustrative assets from Unsplash, downloaded and served locally. They are not booking listings or evidence of an included property. The sample itineraries are fictional teaching data. The brand mark is an original SVG created for this project. Both font families are distributed under the SIL Open Font License; copies are in `docs/licenses` and embedded in the standalone preview. Scroll Craft includes its upstream license.
+Cover photographs are illustrative assets from Unsplash, downloaded and served locally. They are not booking listings or evidence of an included property. The sample itineraries are fictional teaching data. The brand mark is an original interlocking TP monogram, drawn as compact filled SVG paths on the vermilion tile. Its open counters remain readable at favicon and sidebar sizes. The same asset supplies the sidebar, login, loading screen and favicon. Both font families are distributed under the SIL Open Font License; copies are in `docs/licenses` and embedded in the standalone preview. Scroll Craft includes its upstream license.
 
 | Local asset | Original image |
 |---|---|

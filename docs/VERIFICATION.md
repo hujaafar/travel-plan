@@ -1,4 +1,4 @@
-# Verification record Â· 13 September 2026
+# Verification record Ã‚Â· 13 September 2026
 
 This record separates tested behavior, supplied configuration and remaining work. The final design is Kinetic Atlas, expanding The Departure Desk in response to the request for more ambitious scroll effects.
 
@@ -22,6 +22,10 @@ This record separates tested behavior, supplied configuration and remaining work
 | Remote review | Local feature branch only. No remote PR, independent approval, branch protection or public deployment. |
 
 Automated browser emulation is not a real phone test or a complete accessibility certification. Safari, physical touch interaction and screen-reader use have not been verified.
+
+## Logo refresh
+
+The starburst was replaced with an original TP monogram. The production build passed; the exported preview was checked for the same embedded SVG in its sidebar, login and favicon. Rendered sizes of 16, 24, 38 and 64 pixels were inspected, and the main screenshots and motion recording were refreshed. No application logic or dependencies changed in this branding update; the broader browser results above are from the preceding motion pass.
 
 ## Current environment
 
