@@ -464,19 +464,6 @@ export default function App() {
             </strong>
           </span>
           <div className="topbar-right">
-            <span
-              className="sample-label"
-              title={
-                window.TRAVEL_PLAN_PREVIEW
-                  ? "Interactive design preview. Changes stay in this browser; no live payments or backend connections."
-                  : "Sample travel workspace"
-              }
-            >
-              <i />{" "}
-              {window.TRAVEL_PLAN_PREVIEW
-                ? "Design preview · sample data"
-                : "Sample workspace"}
-            </span>
             <button
               className="icon-button"
               aria-label="Help"

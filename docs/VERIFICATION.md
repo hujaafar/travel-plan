@@ -1,6 +1,6 @@
-# Verification record Ã‚Â· 13 September 2026
+# Verification record · 13 September 2026
 
-This record separates tested behavior, supplied configuration and remaining work. The final design is Kinetic Atlas, expanding The Departure Desk in response to the request for more ambitious scroll effects.
+This record separates tested behavior, supplied configuration and remaining work. The final design adds Orbital departure to Kinetic Atlas in response to the supplied Árstraumur reference and the request for visible scroll effects in narrow previews.
 
 | Check | Observed result |
 | --- | --- |
@@ -27,6 +27,14 @@ Automated browser emulation is not a real phone test or a complete accessibility
 
 The starburst was replaced with an original TP monogram. The production build passed; the exported preview was checked for the same embedded SVG in its sidebar, login and favicon. Rendered sizes of 16, 24, 38 and 64 pixels were inspected, and the main screenshots and motion recording were refreshed. No application logic or dependencies changed in this branding update; the broader browser results above are from the preceding motion pass.
 
+## Orbital departure update
+
+The topbar sample-data badge is removed. A finite Earth-to-destination opening now responds to native scrolling at all viewport widths. Three direct chapter controls, skip-to-workspace with keyboard focus, an OS-aware persistent motion choice, and an expanding arrival photograph accompany the original working desk.
+
+The new `scripts/verify-orbit.mjs` passed 12 additional axe/layout cases in each browser: widths 320, 390, 700, 820, 1024 and 1440, route/arrival frames, a 640px-high laptop, and reduced motion. First-scroll visual changes, chapter buttons, featured detail, keyboard skip, persisted on/off, explicit opt-in under OS reduced motion, and navigation/remount passed. Chrome rendered the WebGL sphere and passed context loss/fallback/restoration. Firefox's Linux test environment did not expose WebGL and passed using the CSS photographic fallback. No Firefox WebGL validation is claimed. The original 13-case suite was also rerun in each browser: 50 automated axe/layout cases combined, with no reported violations or overflow. No external requests or page errors were recorded.
+
+NASA Blue Marble texture attribution is in `docs/licenses/NASA-Blue-Marble.md`. No new packages or remote runtime dependencies were introduced. See `scrollcraft/builds/orbital-departure/BRIEF.md` and `REPORT.md` for reference analysis, layer contracts and final evidence.
+
 ## Current environment
 
 The C: drive previously filled completely and interrupted Docker. Clearing npm's download cache and compressing downloaded runtimes recovered roughly 2 GB in total; subsequent browser setup used part of that space. Source files, generated credentials and existing database volumes were preserved.
@@ -42,6 +50,7 @@ npm test
 npm run build
 python ../scripts/export-preview.py
 node scripts/verify-design.mjs
+node scripts/verify-orbit.mjs
 # On a compatible host with Playwright Firefox installed:
 $env:DESIGN_BROWSER = 'firefox'
 node scripts/verify-design.mjs

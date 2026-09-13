@@ -20,6 +20,7 @@ import {
   photo,
 } from "./types";
 import { useScrollScene, scrollToJourney } from "./useScrollScene";
+import OrbitIntro from "./OrbitIntro";
 
 type Props = {
   travels: Travel[];
@@ -80,6 +81,7 @@ export default function Overview({
       <div className="reading-meter" aria-hidden="true">
         <i />
       </div>
+      <OrbitIntro travel={featured} onOpen={onOpen} />
       <section
         className="dispatch-opening"
         data-sc-act="flow"
@@ -90,7 +92,7 @@ export default function Overview({
           <span>{edition} edition</span>
         </div>
         <div className="dispatch-title-row">
-          <h1 id="desk-title">
+          <h1 id="desk-title" tabIndex={-1}>
             <span className="title-first">The departure </span>
             <br />
             <em>desk.</em>

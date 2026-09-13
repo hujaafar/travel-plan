@@ -116,7 +116,9 @@ export function useScrollScene(
           ? clamp(
               (22 - box.top) / Math.max(1, box.height - launch.offsetHeight),
             )
-          : 0;
+          : motion
+            ? clamp((height * 0.7 - box.top) / (box.height + height * 0.3))
+            : 0;
         set(flight, "--flight", progress);
         if (plane) {
           const t = progress,

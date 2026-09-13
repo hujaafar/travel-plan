@@ -74,6 +74,24 @@ async function scene(selector, stageSelector, progress, duration) {
   await move(top, duration);
 }
 await page.waitForTimeout(800);
+for (const [progress, duration] of [
+  [0.2, 1800],
+  [0.44, 2300],
+  [0.69, 2200],
+  [0.96, 2400],
+]) {
+  const top = await page
+    .locator(".orbital-intro")
+    .evaluate(
+      (el, p) =>
+        el.getBoundingClientRect().top +
+        scrollY +
+        (el.offsetHeight - el.querySelector(".orbit-stage").offsetHeight) * p,
+      progress,
+    );
+  await move(top, duration);
+  if (progress === 0.44 || progress === 0.96) await page.waitForTimeout(500);
+}
 await scene(".launch-runway", ".launch-stage", 0, 1400);
 await scene(".launch-runway", ".launch-stage", 1, 4200);
 await to(".desk-numbers", 1500, 180);
@@ -113,15 +131,15 @@ const sheet = await browser.newPage({
   viewport: { width: 1600, height: 1800 },
 });
 const names = [
-  "launch-entry",
-  "scroll-cover",
-  "scroll-route-uluwatu",
+  "orbit-earth",
+  "orbit-route",
+  "orbit-descent",
+  "orbit-arrival",
   "gallery-start",
-  "gallery-end",
   "scroll-close",
 ];
 await sheet.setContent(
-  "<html><style>body{margin:0;padding:30px;background:#f5f3ed;color:#262c29;font:14px Arial}h1{font-size:26px;margin:0 0 20px}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}figure{margin:0}img{width:100%;height:480px;object-fit:contain;background:#e8e8df}figcaption{padding:8px 0;font-size:13px}</style><h1>Kinetic Atlas · scroll sequence</h1><main>" +
+  "<html><style>body{margin:0;padding:30px;background:#080e14;color:#f4f0e6;font:14px Arial}h1{font-size:26px;margin:0 0 20px}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}figure{margin:0}img{width:100%;height:480px;object-fit:contain;background:#080e14}figcaption{padding:8px 0;font-size:13px}</style><h1>Orbital departure · scroll sequence</h1><main>" +
     names
       .map(
         (name) =>

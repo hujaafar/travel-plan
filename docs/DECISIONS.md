@@ -26,6 +26,12 @@ The user explicitly requested [Scroll Craft](https://github.com/nateherkai/scrol
 
 The rejected fingerprint remains in the registry. The initial redesign differs in all six dimensions; its kinetic expansion differs in five. See `scrollcraft/builds/kinetic-atlas/BRIEF.md` and `REPORT.md`. The upstream engine is preserved unmodified for reference. A small React hook implements the relevant progress and reveal behavior with lifecycle cleanup and one queued animation frame, avoiding duplicate observers after navigation. It never intercepts wheel input. The gallery pin span equals its measured horizontal travel. Focus reveals the corresponding card immediately, while small screens use native horizontal scrolling and reduced motion removes pinning. No extra animation dependency was added. No generated media, paid API calls, scroll-scrubbed video or full video encoder is required for this photographic composition.
 
+## Orbital departure
+
+The user supplied https://arstraumur.music/ and asked for equivalent visual energy. The new introductory camera scene turns a NASA-textured Earth, moves star planes, traces a decorative orbit, and reveals the featured journey through an expanding photographic aperture. Unlike the previous desktop-only strongest effects, this opening operates at every width; mobile has a separate layout and shorter scroll span. Three chapter buttons and a keyboard-aware skip preserve direct access to the admin work.
+
+An original, small WebGL shader renders the globe on demand. CSS supplies a photographic fallback if WebGL is unavailable or lost; no extra runtime dependency is required. The scene releases GPU objects and event handlers on unmount. Motion defaults to the OS preference and can be explicitly enabled or disabled with a persisted control. The fictional data and preview adapter remain documented, while the user-requested topbar badge is removed.
+
 ## Photography and assets
 
 Cover photographs are illustrative assets from Unsplash, downloaded and served locally. They are not booking listings or evidence of an included property. The sample itineraries are fictional teaching data. The brand mark is an original interlocking TP monogram, drawn as compact filled SVG paths on the vermilion tile. Its open counters remain readable at favicon and sidebar sizes. The same asset supplies the sidebar, login, loading screen and favicon. Both font families are distributed under the SIL Open Font License; copies are in `docs/licenses` and embedded in the standalone preview. Scroll Craft includes its upstream license.
@@ -42,3 +48,5 @@ Cover photographs are illustrative assets from Unsplash, downloaded and served l
 | Uluwatu route photograph | https://unsplash.com/photos/a-view-of-the-ocean-from-the-top-of-a-cliff-GA7rJUjzbJQ (Reynardo Etenia Wongso) |
 
 See [Unsplash license](https://unsplash.com/license). Replace these local covers with project-owned photography if the product is publicly launched.
+
+NASA Earth texture: see [credit and source](licenses/NASA-Blue-Marble.md).
