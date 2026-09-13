@@ -41,6 +41,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { api, setCsrf } from "./api";
+import { travelPayload, userPayload, gatewayPayload } from "./formPayloads";
+import {
+  calendarAgenda,
+  calendarDateKey,
+  moveCalendarMonth,
+  travelsInPeriod,
+} from "./calendar";
+import { refreshWorkspace } from "./workspaceRefresh";
 import {
   type User,
   type Travel,
@@ -207,7 +215,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                 type="password"
                 autoComplete="current-password"
                 required
-                maxLength={128}
+                maxLength={72}
               />
             </label>
             {error && (
@@ -242,6 +250,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 }
 export default function App() {
   const sessionRevision = useRef(0);
+  const refreshRevision = useRef(0);
   const toastTimer = useRef<number | undefined>(undefined);
   const revisionAtRender = sessionRevision.current;
   const [user, setUser] = useState<User | null>(null);
@@ -325,23 +334,32 @@ export default function App() {
   }, []);
   async function refresh() {
     const revision = sessionRevision.current;
+    const request = ++refreshRevision.current;
+    const isCurrent = () =>
+      revision === sessionRevision.current &&
+      request === refreshRevision.current;
     setLoading(true);
     setError("");
     try {
-      const [t, u, g] = await Promise.all([
-        api<Travel[]>("/travels"),
-        api<User[]>("/users"),
-        api<Gateway[]>("/payments"),
-      ]);
-      if (revision !== sessionRevision.current) return;
-      setTravels(t);
-      setUsers(u);
-      setGateways(g);
-      setUser((current) => reconcileSessionUser(current, u));
-    } catch (e) {
-      if (revision === sessionRevision.current) setError((e as Error).message);
+      const failures = await refreshWorkspace(
+        {
+          travels: () => api<Travel[]>("/travels"),
+          users: () => api<User[]>("/users"),
+          gateways: () => api<Gateway[]>("/payments"),
+        },
+        {
+          travels: setTravels,
+          users: (people) => {
+            setUsers(people);
+            setUser((current) => reconcileSessionUser(current, people));
+          },
+          gateways: setGateways,
+        },
+        isCurrent,
+      );
+      if (isCurrent()) setError(failures.join(" · "));
     } finally {
-      if (revision === sessionRevision.current) setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }
   useEffect(() => {
@@ -969,11 +987,7 @@ export default function App() {
                           aria-label="Previous month"
                           onClick={() => {
                             setCalendarDate(
-                              new Date(
-                                calendarDate.getFullYear(),
-                                calendarDate.getMonth() - 1,
-                                1,
-                              ),
+                              moveCalendarMonth(calendarDate, -1),
                             );
                             setActiveDay(null);
                           }}
@@ -984,13 +998,7 @@ export default function App() {
                           className="icon-button"
                           aria-label="Next month"
                           onClick={() => {
-                            setCalendarDate(
-                              new Date(
-                                calendarDate.getFullYear(),
-                                calendarDate.getMonth() + 1,
-                                1,
-                              ),
-                            );
+                            setCalendarDate(moveCalendarMonth(calendarDate, 1));
                             setActiveDay(null);
                           }}
                         >
@@ -1028,13 +1036,8 @@ export default function App() {
                         },
                         (_, i) => {
                           const day = i + 1;
-                          const iso = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                          const trips = travels.filter(
-                            (t) =>
-                              t.start_date.slice(0, 10) <= iso &&
-                              t.end_date.slice(0, 10) >= iso &&
-                              t.status !== "ARCHIVED",
-                          );
+                          const iso = calendarDateKey(calendarDate, day);
+                          const trips = travelsInPeriod(travels, iso);
                           return (
                             <button
                               key={day}
@@ -1065,39 +1068,14 @@ export default function App() {
                     </span>
                     <h2>
                       {activeDay
-                        ? date(
-                            `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}-${String(activeDay).padStart(2, "0")}`,
-                            { month: "long", day: "numeric" },
-                          )
+                        ? date(calendarDateKey(calendarDate, activeDay), {
+                            month: "long",
+                            day: "numeric",
+                          })
                         : "Journeys this month"}
                     </h2>
-                    {travels
-                      .filter((t) => {
-                        const start = new Date(
-                          calendarDate.getFullYear(),
-                          calendarDate.getMonth(),
-                          activeDay || 1,
-                          12,
-                        )
-                          .toISOString()
-                          .slice(0, 10);
-                        const end = activeDay
-                          ? start
-                          : new Date(
-                              calendarDate.getFullYear(),
-                              calendarDate.getMonth() + 1,
-                              0,
-                              12,
-                            )
-                              .toISOString()
-                              .slice(0, 10);
-                        return (
-                          t.start_date <= end &&
-                          t.end_date >= start &&
-                          t.status !== "ARCHIVED"
-                        );
-                      })
-                      .map((t) => (
+                    {calendarAgenda(travels, calendarDate, activeDay).map(
+                      (t) => (
                         <button
                           className="agenda-item"
                           key={t.id}
@@ -1112,7 +1090,8 @@ export default function App() {
                           </span>
                           <ArrowUpRight size={16} />
                         </button>
-                      ))}
+                      ),
+                    )}
                     <p className="agenda-note">
                       Select a day to see the journeys taking place.
                     </p>
@@ -1533,26 +1512,19 @@ function EditorModal({
     setBusy(true);
     setError("");
     const data = Object.fromEntries(new FormData(e.currentTarget));
-    let body: unknown;
-    let path: string;
-    if (editor.kind === "travel") {
-      path = "/travels";
-      body = {
-        ...data,
-        price: Number(data.price),
-        capacity: Number(data.capacity),
-        stops,
-        participantIds: participants,
-        version: travel?.version || 0,
-      };
-    } else if (editor.kind === "user") {
-      path = "/users";
-      body = data;
-    } else {
-      path = "/payments";
-      body = { ...data, enabled: data.enabled === "on" };
-    }
     try {
+      const path =
+        editor.kind === "travel"
+          ? "/travels"
+          : editor.kind === "user"
+            ? "/users"
+            : "/payments";
+      const body =
+        editor.kind === "travel"
+          ? travelPayload(data, stops, participants, travel?.version ?? 0)
+          : editor.kind === "user"
+            ? userPayload(data, !item)
+            : gatewayPayload(data);
       await api(
         path + (item ? "/" + item.id : ""),
         item ? "PUT" : "POST",
@@ -1808,12 +1780,12 @@ function EditorModal({
                 type="password"
                 autoComplete="new-password"
                 minLength={12}
-                maxLength={128}
+                maxLength={72}
                 required={!item}
               />
             </label>
             <p className="form-hint">
-              Use at least 12 characters.
+              Use at least 12 characters, up to 72 UTF-8 bytes.
               {item
                 ? " Leave blank to keep the existing password. Changing it ends their active sessions."
                 : ""}

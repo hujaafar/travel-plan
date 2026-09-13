@@ -1,14 +1,14 @@
 # Verification record · updated 14 September 2026
 
-## Latest assignment audit
+## Latest submission follow-up
 
-See `docs/FINAL-AUDIT.md` for the complete requirement matrix and outstanding submission gaps. On 14 September, Maven `verify` passed **26 Java tests** and repackaged all three services. The frontend passed **12 Vitest tests**, TypeScript/Vite production build and formatting. Six provisioning permission tests passed on native Linux temporary files; Docker/real secrets were not touched by those tests. The current npm audit reported zero vulnerabilities. Runtime and tools Compose configurations validated; the new image-build-only model also validated with an empty environment.
+The final combined local run passed 76 Java tests, 62 Vitest tests, TypeScript/Vite build, formatting and npm audit (zero reported vulnerabilities). Java JaCoCo coverage is 436/455 lines (95.8%) and 158/176 branches (89.8%). Sixteen Python tests pass on native Linux fixtures; Windows explicitly skips five POSIX assertions. All 37 configuration contracts and real Ansible syntax passed.
 
-The audit fixed administrator re-creation on restart, null itinerary validation, secret-dependent CI builds, Community Sonar branch scoping, Linux provisioning permissions, unsupported Ansible platform claims, fractional-price display, stale profile metadata, misleading gateway status and session state cleanup. Database upgrade/concurrent startup and the newly authored live session-cleanup test still require a running Docker environment. Existing motion evidence below comes from the preceding design pass; the final audit handoff records the refreshed consistency and form-submission browser results.
+This pass added broad feature units, independent service refresh, API deadlines, calendar date corrections, batched repeatable-read travel queries and BCrypt byte-boundary validation. Verifier tests cover preflight failures, opt-in safety, interrupted stops, restoration and cleanup failures. Jenkins source now includes configuration/Ansible checks and trusted TLS/service-log correlation. These pipeline edits are configuration evidence until a real Jenkins run succeeds.
 
-Final browser reruns passed in Chrome 152 and Linux Firefox 155: five portable admin form/regression flows per browser and 30 visual consistency screens per browser. All 60 consistency screens reported zero axe violations and document overflow; both form runs reported zero page errors and external requests. `verify-admin-flows.mjs` submits person/gateway forms and exercises cents, self-edit and expired-draft behavior. Motion source was unchanged; the prior orbital/design suites below were not rerun in this audit.
+Fresh portable browser results are exported separately for Chrome and WSL Firefox: eight admin regression flows and 55 design/orbit/consistency cases per browser. The exact JSON results and source revision are in the handoff. These suites include new invalid-date/password and partial-service retry checks. Firefox uses the photographic CSS fallback, so its WebGL behavior is unverified. Read [FINAL-AUDIT.md](FINAL-AUDIT.md), [TEST-MATRIX.md](TEST-MATRIX.md) and [INFRASTRUCTURE-GATES.md](INFRASTRUCTURE-GATES.md) for the evidence limits and outstanding live checks.
 
-This record separates tested behavior, supplied configuration and remaining work. The current Unified Atlas revision applies one dark palette, shared headings and component treatments across Home, every operational page, forms, help and login. Motion remains enabled under the user's explicit request, including when an old motion-off choice is stored or the OS requests reduced motion. The historical sections below retain earlier evidence and the earlier motion policy; they are not claims that those builds are the current interface.
+Motion remains always enabled under the user's explicit request. Historical sections below preserve earlier builds and earlier motion policies; they are not the current interface's specification.
 
 ## Unified Atlas — current verification
 
@@ -28,7 +28,7 @@ Page entry animation now translates fully opaque content, maintaining text contr
 
 The live `dashboard/e2e/workspace.spec.ts` now includes a focused session-cleanup regression: expire a session with an editor, detail or delete dialog open, sign back in without reloading, and temporarily hold the data requests to verify that old dialogs and cached records do not return. This new real-service case has been authored but has not been executed against the current Java deployment. Portable-preview authentication behavior is not evidence of server expiry enforcement.
 
-One resilience gap remains: `App.refresh()` fetches travel, user and gateway data together using `Promise.all`. If one service fails, the successful responses are not applied, so a payment-service outage can prevent otherwise available travel/user data from appearing. Per-service refresh and partial availability remain future work; this audit leaves that behavior unchanged.
+That initial combined-refresh limitation is now fixed: each service publishes independently; failures retain the previous same-session cache. Session/refresh revisions reject stale completions, and 15-second API deadlines bound stalled requests. Unit and rendered portable retry regressions cover this behavior.
 
 ## Historical Kinetic Atlas verification
 

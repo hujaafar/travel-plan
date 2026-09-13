@@ -3,6 +3,7 @@ package com.travelplan.travel;
 import java.util.*;
 import org.neo4j.driver.*;
 import org.slf4j.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,9 +16,18 @@ public class DestinationGraph implements AutoCloseable {
   private final JdbcTemplate db;
   private static final org.slf4j.Logger log = LoggerFactory.getLogger(DestinationGraph.class);
 
-  public DestinationGraph(JdbcTemplate db, @Value("${NEO4J_PASSWORD}") String password) {
+  @Autowired
+  public DestinationGraph(
+      JdbcTemplate db,
+      @Value("${NEO4J_PASSWORD}") String password,
+      @Value("${NEO4J_URI:bolt+s://neo4j:7687}") String uri,
+      @Value("${NEO4J_USERNAME:neo4j}") String username) {
+    this(db, GraphDatabase.driver(uri, AuthTokens.basic(username, password)));
+  }
+
+  DestinationGraph(JdbcTemplate db, Driver driver) {
     this.db = db;
-    driver = GraphDatabase.driver("bolt+s://neo4j:7687", AuthTokens.basic("neo4j", password));
+    this.driver = driver;
   }
 
   @Scheduled(fixedDelay = 5000)

@@ -56,3 +56,7 @@ Grafana is at `https://localhost:13443`; username `admin`, password `GRAFANA_ADM
 Use PostgreSQL `pg_dump -Fc` and restore into a separate clean database to test it. On PowerShell, redirect binary output through a binary-safe Python subprocess or a file inside the container; avoid text pipelines. Back up `.secrets/` through an encrypted, access-controlled channel. Use Vault Raft snapshots after unsealing. Neo4j's graph can be rebuilt from PostgreSQL by enqueuing all current travel IDs, but take a Neo4j database dump if other graph data is introduced.
 
 No backup policy is claimed to be in place until a restore has been tested. The current development deployment uses named volumes on one Docker host.
+
+## Graph connection on an approved deployment
+
+The travel service accepts optional `NEO4J_URI` and `NEO4J_USERNAME` properties. Defaults remain `bolt+s://neo4j:7687` and the local `neo4j` account; the password continues to come from the existing scoped Vault configuration. Supply these settings to the service through the approved deployment configuration, preserve a verified-TLS URI and trusted certificates, and use a scoped runtime account only on a Neo4j offering that supports it. Renaming a Community account does not remove its implied admin privileges. No alternate database or license was activated in this pass.

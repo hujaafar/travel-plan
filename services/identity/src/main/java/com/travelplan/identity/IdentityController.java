@@ -24,14 +24,14 @@ public class IdentityController implements SessionVerifier {
     this.db = db;
   }
 
-  public record Login(@Email @NotBlank String email, @NotBlank @Size(max = 128) String password) {}
+  public record Login(@Email @NotBlank String email, @NotBlank @Size(max = 72) String password) {}
 
   public record UserInput(
       @NotBlank @Size(max = 100) String name,
       @Email @NotBlank @Size(max = 254) String email,
       @NotBlank String role,
       @NotBlank String status,
-      @Size(max = 128) String password) {}
+      @Size(max = 72) String password) {}
 
   public static String hash(String text) {
     try {
@@ -51,6 +51,7 @@ public class IdentityController implements SessionVerifier {
 
   @PostMapping("/api/auth/login")
   public ResponseEntity<?> login(@Valid @RequestBody Login input) {
+    validatePasswordBytes(input.password());
     String email = input.email().toLowerCase(Locale.ROOT).trim();
     db.update(
         "insert into identity.login_attempts(email) values (?) on conflict do nothing", email);
@@ -159,8 +160,14 @@ public class IdentityController implements SessionVerifier {
         || !Set.of("ACTIVE", "SUSPENDED").contains(u.status()))
       throw new IllegalArgumentException("Invalid role or status");
     if ((creating || (u.password() != null && !u.password().isBlank()))
-        && (u.password() == null || u.password().length() < 12))
+        && (u.password() == null || u.password().isBlank() || u.password().length() < 12))
       throw new IllegalArgumentException("Password must contain at least 12 characters");
+    if (u.password() != null && !u.password().isBlank()) validatePasswordBytes(u.password());
+  }
+
+  private static void validatePasswordBytes(String password) {
+    if (password.getBytes(StandardCharsets.UTF_8).length > 72)
+      throw new IllegalArgumentException("Password must contain at most 72 UTF-8 bytes");
   }
 
   @PostMapping("/api/users")

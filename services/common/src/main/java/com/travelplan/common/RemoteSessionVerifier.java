@@ -14,10 +14,12 @@ public class RemoteSessionVerifier {
     var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
     factory.setConnectTimeout(3000);
     factory.setReadTimeout(5000);
+    return createVerifier(RestClient.builder().baseUrl(base).requestFactory(factory), key);
+  }
+
+  static SessionVerifier createVerifier(RestClient.Builder builder, String key) {
     var client =
-        RestClient.builder()
-            .baseUrl(base)
-            .requestFactory(factory)
+        builder
             .requestInterceptor(
                 (request, body, execution) -> {
                   String id = org.slf4j.MDC.get("requestId");

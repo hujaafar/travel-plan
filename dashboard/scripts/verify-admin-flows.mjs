@@ -51,6 +51,14 @@ try {
   await dialog()
     .getByLabel("Email address", { exact: true })
     .fill("audit@example.test");
+  await dialog().getByLabel("Password", { exact: true }).fill("😀".repeat(19));
+  await dialog()
+    .getByRole("button", { name: "Create person", exact: true })
+    .click();
+  await expect(dialog().getByRole("alert")).toContainText("72");
+  checks.push(
+    "Oversized UTF-8 password is rejected before submitting the person form",
+  );
   await dialog()
     .getByLabel("Password", { exact: true })
     .fill("Preview-regression-42");
@@ -110,6 +118,20 @@ try {
   ).toContainText("$1,680.25");
   checks.push("Fractional travel price remains visible after saving");
 
+  await button("Edit " + title).click();
+  await dialog().locator('input[name="startDate"]').fill("2028-03-10");
+  await dialog().locator('input[name="endDate"]').fill("2028-03-09");
+  await dialog()
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await expect(dialog().getByRole("alert")).toContainText(
+    "End date must be on or after start date",
+  );
+  await dialog().getByRole("button", { name: "Cancel", exact: true }).click();
+  checks.push(
+    "Invalid travel dates keep the editor open with an actionable error",
+  );
+
   await go("Settings");
   await button("Edit account").click();
   await dialog()
@@ -127,6 +149,54 @@ try {
   );
   checks.push(
     "Self-edit refreshes the active account name and email without reloading",
+  );
+
+  // Inject a failed portable response, exercising the real rendered refresh/retry
+  // path without pretending that a production payment service was stopped.
+  await page.evaluate(() => {
+    const original = window.fetch;
+    window.restoreAuditFetch = () => {
+      window.fetch = original;
+    };
+    window.fetch = (input, options) =>
+      input === "/api/payments" &&
+      (!options?.method || options.method === "GET")
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({ message: "Temporary audit outage" }),
+              {
+                status: 503,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          )
+        : original(input, options);
+  });
+  await button("Edit account").click();
+  await dialog()
+    .getByLabel("Full name", { exact: true })
+    .fill("Available workspace admin");
+  await save();
+  await expect(page.locator(".settings-profile")).toContainText(
+    "Available workspace admin",
+  );
+  await expect(page.locator(".error-banner")).toContainText(
+    "Payments: Temporary audit outage",
+  );
+  await go("Travel plans");
+  await expect(
+    page.locator(".travel-row").filter({ hasText: title }),
+  ).toHaveCount(1);
+  await go("Payments");
+  await expect(page.locator(".payment-card")).toHaveCount(2);
+  await page.evaluate(() => {
+    window.restoreAuditFetch();
+    delete window.restoreAuditFetch;
+  });
+  await button("Try again").click();
+  await expect(page.locator(".error-banner")).toHaveCount(0);
+  checks.push(
+    "A failed payments refresh preserves healthy updates and cached gateways; retry recovers",
   );
 
   await go("People");

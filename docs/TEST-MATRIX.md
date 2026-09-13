@@ -1,0 +1,34 @@
+# Feature test map
+
+This map connects the phase-one features to executable tests. Unit tests cover application decisions and failure paths; JDBC/Neo4j mocks do not prove database constraints, network security or deployment availability. The final audit records which suites actually ran against the supplied revision.
+
+| Feature | Unit evidence | Browser / live evidence |
+| --- | --- | --- |
+| Sign-in, session lookup and logout | `IdentityFeatureTest`, `SecurityFlowTest`, `RemoteVerificationTest`, `RequestSecurityTest`, `SecurityFilterTest`: password verification, failed-login bookkeeping, locked-account rejection, secure cookie creation, token lookup/revocation, expired sessions, exact-origin/CSRF enforcement, role denial and failed identity calls | Live `e2e/workspace.spec.ts`: authenticated sessions, permissions, simulated expiry cleanup and actual server revocation |
+| Initial administrator lifecycle | `BootstrapTest`: first initialization, durable marker, existing users, failed insertion and deleted-admin restart | Bootstrap migration and concurrent startup need PostgreSQL and multiple identity replicas |
+| People CRUD and account protection | `IdentityFeatureTest`, `IdentityRulesTest`: list/create/update/delete, password replacement, account status, self-access and final-admin guards | `verify-admin-flows.mjs`: actual person forms, role/status changes, persistence and deletion in the portable adapter; live API suite tests database effects |
+| Travel CRUD and itinerary details | `TravelFeatureTest`, `TravelValidationTest`, `ItineraryRulesTest`: required stops, dates, ordered child rows, memberships, capacity, inclusive duration, create/edit/delete, stale versions and transaction interception | Portable travel forms, persistence, search, CSV, empty/single-plan layouts; live API suite exercises database persistence and cascades |
+| Consistent travel lists | `TravelFeatureTest`: two separate journeys, ordered stops and memberships in three batch queries, empty catalogue, read-only repeatable-read transaction | Actual simultaneous PostgreSQL reads/edits require the live deployment |
+| SQL-to-graph projection | `DestinationGraphTest`: unavailable lock, projection, deletion, failure retains outbox, replay uses current SQL state | `verify-infrastructure.py`: verified Bolt TLS, drained outbox and matching Travel-node counts; graph IDs, properties, relationships and update/delete convergence need further live assertions |
+| Stripe / PayPal gateway administration | `GatewayFeatureTest`, `ProviderHttpTest`: metadata CRUD, configuration status, sandbox authentication request construction and provider error responses | Portable gateway forms; protected provider-test endpoint requires valid owner sandbox credentials. No checkout, charge or refund is claimed |
+| Error handling and request correlation | `ErrorsTest`, `SecurityFlowTest`, `RemoteVerificationTest`, `RequestSecurityTest`: safe error responses, sanitized request ID, identity propagation and cleanup | `verify-logging.py`: real authenticated request IDs in target/identity logs and, by default, centralized Loki ingestion |
+| Travel, person and gateway form payloads | `formPayloads.test.ts`: required/allowed values, dates, amounts, capacity, stop details, duplicate participants, roles, password limits and secret-field exclusion | `verify-admin-flows.mjs`: submit/edit/delete, invalid-date feedback, fractional prices and active-account updates |
+| Calendar and display values | `calendar.test.ts`, `types.test.ts`: local calendar dates, month/year/leap-day boundaries, period overlaps, archived exclusion, destination/country filtering and currency cents | Calendar in desktop/mobile consistency checks |
+| Partial availability and session-owned state | `workspaceRefresh.test.ts`, `api.test.ts`, `session.test.ts`: independent service responses, named failures, retained cache, superseded/expired requests, HTTP errors and active-profile reconciliation | Portable payment-failure/retry and expired-draft checks; live suite includes held requests after session expiry |
+| Responsive pages and scroll motion | Portable `verify-design.mjs`, `verify-orbit.mjs`, `verify-consistency.mjs` inspect actual rendered behavior | Chrome and Firefox widths from 320 to 1440, lower Home sections, all admin pages, editors, details/help/login, scroll transforms and automated axe/overflow checks. Firefox's WSL run uses its CSS photo fallback; it does not validate Firefox WebGL |
+| Provisioning permissions | `scripts/tests/test_secret_permissions.py`: private operator files and scoped container exports in temporary Linux fixtures | Actual host ACLs and deployed secrets still require operational review |
+| Safe failover verification and log matching | `scripts/tests/test_runtime_checks.py`: failed/interrupted stops restore their replica, restoration failure remains a failure, exact correlation rejects unrelated or unsuccessful requests | Explicit `verify-failover.py --run-failover` requires an already healthy replicated review deployment |
+| Compose, Jenkins and Ansible configuration | `verify-manifests.py`: secret-free image/build agreement, replica/network/TLS declarations and pipeline boundaries; actual Ansible syntax check when required | These checks do not execute Jenkins, SonarQube, an Ansible deployment or Git-host branch protection |
+
+## Repeat the checks
+
+Install the repository's declared Java, dashboard and Ansible dependencies first. On a compatible Linux controller with Chrome or the matching Playwright Firefox runtime:
+
+```bash
+python3 scripts/pre-submit.py --browser chrome
+python3 scripts/pre-submit.py --browser firefox --output work/submission-firefox
+```
+
+Windows can run the Java, frontend, Chrome and Compose checks. Select an installed Ansible executable with `--ansible`; the Ansible controller and POSIX permission checks require Linux. `--offline` uses cached Maven dependencies. Reports and per-stage logs are written under ignored `work/` and record failed or unverified checks explicitly. `--skip-browser` is useful for a code-only rerun, but records the skipped browser evidence.
+
+On a running dedicated test stack, `--live` adds authenticated infrastructure, selected-browser E2E and logging gates. Add `--run-failover` only for the documented two-replica test environment. See [infrastructure gates](INFRASTRUCTURE-GATES.md) for exact prerequisites, restoration behavior and evidence limits. The runner never issues independent approval or marks an unverified deployment ready for submission.

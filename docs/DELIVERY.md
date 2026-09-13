@@ -48,3 +48,7 @@ Copy `inventory.example.ini`, substitute the actual SSH host, and keep real inve
 ## Maintenance
 
 Renovate configuration proposes dependency updates without auto-merging. Review images and language dependencies regularly, run all checks, and patch promptly. Pin approved image digests for a release. Never include `.env`, `.secrets`, node_modules, target, or build reports in a source artifact.
+
+## Reproducible review gates
+
+The pipeline now validates the four Compose models and requires actual Ansible syntax checks in its configuration stage. Its trusted integration stage also runs the TLS/database verifier and authenticated service-log correlation; `--service-logs-only` explicitly does not prove Loki ingestion. Configuration and integration reports are archived by Jenkins. See [INFRASTRUCTURE-GATES.md](INFRASTRUCTURE-GATES.md) for the separate centralized-ingestion and opted-in replica-failure commands. No actual Jenkins or remote deployment success is claimed from these source edits.

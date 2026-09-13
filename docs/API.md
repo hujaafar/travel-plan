@@ -30,7 +30,7 @@ Updates and deletes normally return an empty HTTP 200 body. Standard errors cont
 {"name":"Example traveller","email":"traveller@example.test","role":"VIEWER","status":"ACTIVE","password":"replace-with-a-long-password"}
 ```
 
-Roles: ADMIN, TRAVEL_MANAGER, VIEWER. Status: ACTIVE or SUSPENDED. On update, omit or leave password blank to preserve it. A new password must have at least 12 characters and revokes existing sessions.
+Roles: ADMIN, TRAVEL_MANAGER, VIEWER. Status: ACTIVE or SUSPENDED. On update, omit or leave password blank to preserve it. A new password must have at least 12 characters and fit within 72 UTF-8 bytes; it revokes existing sessions. Oversized values are rejected before BCrypt hashing and are never truncated.
 
 ## Travel payload
 

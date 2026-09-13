@@ -2,7 +2,7 @@
 
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
-**Current laptop status:** the final assignment audit found and fixed application and provisioning defects; 26 Java tests, 12 frontend tests, six Linux permission tests and the production builds pass. The prior design pass covered 110 accessibility/layout cases across Chrome and Linux Firefox. The self-contained preview works without Docker. Docker is currently unavailable, and complete feature unit coverage, live CI/deployment/failover evidence, Neo4j least privilege and independent PR approval remain incomplete. Read the [final requirement audit](docs/FINAL-AUDIT.md) before claiming full assignment completion.
+**Current verification:** 76 Java tests, 62 frontend tests and 16 native Linux provisioning/verifier tests pass; Java line coverage is 95.8%. Production builds, 37 configuration contracts and an actual Ansible syntax check pass. The dashboard handles partial service failures and bounded request timeouts, and travel lists use a consistent three-query snapshot. Docker startup is still blocked on this laptop; live delivery/failover evidence, end-to-end HA, Neo4j least privilege and independent PR approval remain open. Read the [submission audit](docs/FINAL-AUDIT.md) before claiming full assignment completion.
 
 Unified Atlas carries the requested Scroll Craft design through one consistent product: an Earth-to-destination opening, expanding departure photograph, drawn route, independent ticket, itinerary spread, dimensional gallery and orbital close, followed by administration pages using the same ink, ivory and copper palette. Shared headings, buttons, tables, forms, calendar, settings, help and login follow the same visual system. Native scrolling controls the scenes; mobile uses a swipeable gallery. Motion is always enabled at the user's explicit request, including when an old off choice is stored or the OS requests reduced motion. Direct chapters and skip controls remain available.
 
@@ -101,6 +101,8 @@ npm run test:e2e
 The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow and WCAG accessibility rules. It has not been rerun against this frontend revision while Docker is offline. Browser tests do not make real payments. They create and clean up their own records.
 
 Use `scripts/verify-infrastructure.py` for verified internal TLS, PostgreSQL transport enforcement, and graph projection checks. [VERIFICATION.md](docs/VERIFICATION.md) records the latest observed results and limitations.
+
+See the [feature test map](docs/TEST-MATRIX.md) and [reproducible infrastructure gates](docs/INFRASTRUCTURE-GATES.md). Run `python scripts/pre-submit.py` after installing the declared dependencies to collect local checks and explicitly unverified external gates.
 
 ## Delivery and operations
 
