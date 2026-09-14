@@ -3,6 +3,7 @@
 import importlib.util
 from contextlib import contextmanager
 import json
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -63,6 +64,22 @@ class CorrelationTest(unittest.TestCase):
         line = json.dumps({"requestId":"tpverify-abc", "message":"request method=GET path=/api/travels status=401 durationMs=5"})
         self.assertFalse(runtime_checks.matching_records(line, "tpverify-abc", "/api/travels"))
         self.assertFalse(runtime_checks.matching_records("unstructured log line", "tpverify-abc", "/api/travels"))
+
+
+class ManifestDeadlineTest(unittest.TestCase):
+    def test_controller_timeout_cannot_be_reported_as_a_skipped_or_passed_check(self):
+        module = verifier("verify-manifests")
+        with tempfile.TemporaryDirectory() as scratch:
+            report = Path(scratch) / "report.json"
+            args = SimpleNamespace(ansible="ansible-playbook", require_ansible=True, report=str(report))
+            with patch.object(module, "compose", return_value={}), \
+                 patch.object(module, "check_models", return_value=[]), \
+                 patch.object(module, "run_command", side_effect=subprocess.TimeoutExpired("ansible", 60)):
+                with self.assertRaisesRegex(runtime_checks.VerificationError, "startup deadline"):
+                    module.run(args)
+            result = json.loads(report.read_text())
+            self.assertFalse(result["passed"])
+            self.assertEqual(result["ansible"], {"status":"failed", "reason":"TimeoutExpired"})
 
 
 class PreflightTest(unittest.TestCase):

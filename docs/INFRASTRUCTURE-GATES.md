@@ -50,4 +50,12 @@ Every stop enters a `finally` restoration path, including failed stops and ordin
 | Jenkins and review | Pipeline source, isolated build model, unit/config checks, main-only Community Sonar gate, protected deployment stage | Connect a trusted build agent, configure Sonar token/webhook/TLS trust, execute the pipeline, configure Git-host protections and obtain an independent human PR approval. The current Community gate does not analyze PRs before merging; use a supported offering if pre-merge Sonar analysis is required. |
 | Ansible | Ubuntu 22.04/24.04 package recipe, private deployment directory, Compose provisioning | Run a reviewed deployment on an owned compatible host; syntax success alone does not verify installation, startup or repeatability. |
 
-The current laptop's unavailable Docker engine prevents the live gates from being demonstrated here. Scripts, mock tests, declared topology and documentation should be reported separately from executed production or staging evidence. Kubernetes remains optional; adding untested manifests would not close the underlying resource, licensing or execution requirements.
+During the latest local attempt, PostgreSQL query readiness, the bootstrap migration, Vault provisioning and all four image builds passed. Docker then returned API errors and stopped responding, and the live browser attempt failed to reach the app. WSL also failed to start the Ansible controller. No completed live infrastructure, CI or failover gate is claimed. Scripts, mock tests, declared topology and documentation remain separate from executed deployment evidence. Kubernetes remains optional.
+
+Use `python scripts/start.py` for sequential builds, staged bootstrap and bounded
+runtime readiness. Set `BUILD_CA_FILE` only when an approved organization CA bundle
+is needed for package downloads; the startup command chooses the optional build
+overlay automatically. `--replicas 2` selects the base replicated deployment.
+Do not run replica failure tests until that deployment is healthy. CLI timeouts
+terminate only the launched command tree; they do not reset Docker or stop other
+projects. The failover runner retains ownership of its restoration procedure.

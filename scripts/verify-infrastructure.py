@@ -3,12 +3,13 @@
 import json
 from pathlib import Path
 import subprocess
+from process_runtime import run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(args, **kwargs):
-    return subprocess.run(args, cwd=ROOT, check=True, text=True, **kwargs)
+    return run_command(args, cwd=ROOT, check=True, text=True, timeout=60, **kwargs)
 
 
 run(["docker", "compose", "config", "--quiet"])
@@ -99,7 +100,7 @@ assert (
 ), "Neo4j projection is still pending; retry after the graph worker runs"
 print(f"PASS separate runtime roles; graph outbox drained; {travels} saved travels")
 
-plain = subprocess.run(
+plain = run_command(
     [
         "docker",
         "compose",
@@ -113,6 +114,7 @@ plain = subprocess.run(
     cwd=ROOT,
     capture_output=True,
     text=True,
+    timeout=30,
 )
 assert (
     plain.returncode != 0 and "no encryption" in plain.stderr

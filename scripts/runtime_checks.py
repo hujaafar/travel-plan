@@ -13,6 +13,7 @@ import subprocess
 import threading
 import time
 import uuid
+from process_runtime import run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = "python:3.13-alpine"
@@ -24,7 +25,7 @@ class VerificationError(RuntimeError):
 
 
 def docker(*arguments, timeout=60, payload=None):
-    result = subprocess.run(
+    result = run_command(
         ["docker", *arguments], cwd=ROOT, input=payload, capture_output=True,
         text=True, encoding="utf-8", errors="replace", timeout=timeout,
     )

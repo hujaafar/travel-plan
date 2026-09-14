@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 
 from runtime_checks import ROOT, VerificationError, write_report
+from process_runtime import run_command
 
 
 def compose(files, environment_file, profiles=()):
@@ -24,7 +25,7 @@ def compose(files, environment_file, profiles=()):
         arguments += ["-f", str(ROOT / file)]
     for profile in profiles:
         arguments += ["--profile", profile]
-    result = subprocess.run(arguments + ["config", "--format", "json"],
+    result = run_command(arguments + ["config", "--format", "json"],
                             capture_output=True, text=True, env=environment, timeout=30)
     if result.returncode:
         raise VerificationError("Compose validation failed for " + ", ".join(files))
@@ -62,6 +63,7 @@ def check_models(runtime, local, tools, build):
     for name in ("postgres", "neo4j"):
         require(not runtime["services"][name].get("ports"), name + " has no host port")
     require(runtime["services"]["neo4j"]["environment"]["NEO4J_server_bolt_tls__level"] == "REQUIRED", "Neo4j requires Bolt TLS")
+    require(bool(runtime["services"]["neo4j"].get("healthcheck", {}).get("test")), "Neo4j startup waits for its Bolt listener")
     for name, service in tools["services"].items():
         for port in service.get("ports", []):
             require(port.get("host_ip") == "127.0.0.1", name + " host endpoint stays loopback-bound")
@@ -94,8 +96,12 @@ def run(args):
         report["checks"].append("Jenkins Community scoping and PR/runtime separation contracts")
         ansible = args.ansible or shutil.which("ansible-playbook")
         if ansible:
-            result = subprocess.run([ansible, "--syntax-check", "-i", "infra/ansible/inventory.example.ini", "infra/ansible/deploy.yml"],
-                                    cwd=ROOT, capture_output=True, text=True, timeout=60)
+            try:
+                result = run_command([ansible, "--syntax-check", "-i", "infra/ansible/inventory.example.ini", "infra/ansible/deploy.yml"],
+                                     cwd=ROOT, capture_output=True, text=True, timeout=60)
+            except (subprocess.TimeoutExpired, OSError) as error:
+                report["ansible"] = {"status":"failed", "reason":type(error).__name__}
+                raise VerificationError("Ansible controller did not complete within its startup deadline") from error
             report["ansible"] = {"status":"passed" if result.returncode == 0 else "failed", "command":"ansible-playbook --syntax-check (example inventory; no host contact)",
                                  "stdout":result.stdout[-5000:],"stderr":result.stderr[-5000:]}
             if result.returncode:
@@ -119,7 +125,7 @@ def main():
     parser.add_argument("--report", default="work/verification/manifests.json")
     try:
         run(parser.parse_args())
-    except VerificationError as error:
+    except (VerificationError, subprocess.TimeoutExpired, OSError) as error:
         parser.exit(1, str(error) + "\n")
 
 

@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
+from process_runtime import run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,8 +45,25 @@ def main():
         print("Running " + name, flush=True)
         try:
             with log.open("w", encoding="utf-8") as stream:
-                result = subprocess.run(command, cwd=cwd, env=env, stdout=stream,
-                                        stderr=subprocess.STDOUT, text=True, timeout=timeout)
+                if timeout is None:
+                    # The failover verifier must own restoration, including on
+                    # console interruption. Do not force-kill its process tree.
+                    process = subprocess.Popen(command, cwd=cwd, env=env, stdout=stream,
+                                               stderr=subprocess.STDOUT, text=True)
+                    interrupted = False
+                    while True:
+                        try:
+                            returncode = process.wait()
+                            break
+                        except KeyboardInterrupt:
+                            interrupted = True
+                            print("Waiting for the failover verifier to restore its replica", flush=True)
+                    if interrupted:
+                        raise KeyboardInterrupt()
+                    result = subprocess.CompletedProcess(command, returncode)
+                else:
+                    result = run_command(command, cwd=cwd, env=env, stdout=stream,
+                                         stderr=subprocess.STDOUT, text=True, timeout=timeout)
             status = "passed" if result.returncode == 0 else "failed"
             detail = {"return_code": result.returncode}
         except (OSError, subprocess.TimeoutExpired) as error:
@@ -84,7 +102,7 @@ def main():
         available = run("docker-engine", ["docker", "info", "--format", "{{.ServerVersion}}"], timeout=15)
         if available:
             run("live-infrastructure", [sys.executable, "scripts/verify-infrastructure.py"])
-            run("live-api-browser-tests", [npm, "run", "test:e2e", "--", "--project=" + args.browser], ROOT / "dashboard")
+            run("live-api-browser-tests", [node, "node_modules/@playwright/test/cli.js", "test", "--project=" + args.browser], ROOT / "dashboard")
             run("live-logging", [sys.executable, "scripts/verify-logging.py", "--report", str(output / "logging.json")])
             if args.run_failover:
                 # The verifier owns its deadlines and finally restoration. Do not

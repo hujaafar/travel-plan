@@ -60,3 +60,22 @@ No backup policy is claimed to be in place until a restore has been tested. The 
 ## Graph connection on an approved deployment
 
 The travel service accepts optional `NEO4J_URI` and `NEO4J_USERNAME` properties. Defaults remain `bolt+s://neo4j:7687` and the local `neo4j` account; the password continues to come from the existing scoped Vault configuration. Supply these settings to the service through the approved deployment configuration, preserve a verified-TLS URI and trusted certificates, and use a scoped runtime account only on a Neo4j offering that supports it. Renaming a Community account does not remove its implied admin privileges. No alternate database or license was activated in this pass.
+
+## Building behind an organization TLS proxy
+
+If package downloads fail because this computer uses an organization TLS proxy,
+export its already trusted root certificates to a PEM file and set
+`BUILD_CA_FILE` to that file. Then build with
+`docker compose -f compose.build.yml -f compose.build-ca.yml build`.
+Use only roots approved for the build host; never disable certificate verification.
+The optional BuildKit mount supplies trust to Alpine and npm downloads only.
+It is absent from the final images and does not change application PKI.
+See [Docker build secret mounts](https://docs.docker.com/build/building/secrets/).
+
+`python scripts/start.py` (also used by `scripts/start.ps1`) builds the four images
+sequentially, applies the bootstrap migration, and waits for runtime readiness.
+It automatically uses the optional CA overlay when `BUILD_CA_FILE` is set.
+Use `--no-build` only after building this revision, or `--replicas 2` on a host
+with room for the base replicated topology. A failed stage stops startup and
+preserves volumes. Neo4j's health check establishes Bolt listener readiness;
+`verify-infrastructure.py` separately checks authenticated graph access over TLS.
