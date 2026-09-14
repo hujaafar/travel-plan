@@ -2,40 +2,20 @@
 
 This is a prepared review description. A remote PR has not been created.
 
-## Problem and resulting behavior
+The empty repository now contains Java services for people, travel itineraries and Stripe/PayPal gateway administration, with session authentication, RBAC, CSRF protection, PostgreSQL persistence and a Neo4j outbox projection. The responsive dashboard shares one visual system, logo and scroll treatment across the administration experience.
 
-The initial repository was empty. This change adds a Java admin platform for
-people, travel itineraries and Stripe/PayPal gateway administration, with
-authenticated roles, CSRF protection, PostgreSQL persistence and a Neo4j outbox
-projection. The responsive dashboard uses a shared visual system and scroll
-scenes across its landing experience and administration pages.
-
-Deployment includes containerized services/databases, scoped Vault provisioning,
-internal TLS, two Java replicas in the base profile, Caddy routing, Jenkins/Sonar
-configuration, Ansible provisioning, and request-correlation/logging tools.
-The laptop startup path builds sequentially and waits for real readiness.
+Deployment supplies internal TLS, scoped Vault provisioning, two Java replicas in the base profile, Caddy routing, Jenkins/Sonar configuration, Ansible and request-correlation tools. Startup is staged and bounded. An optional public CA bundle supports inspected build networks through temporary trust stores while retaining TLS checks.
 
 ## Validation
 
-- [x] Java tests and dashboard build pass: unchanged application baseline has
-  76 Java tests and 62 frontend tests; four application Docker images also built.
-- [ ] Relevant live integration and browser tests pass: portable Chrome/Firefox
-  checks passed, but live Chrome navigation failed while Docker was unresponsive.
-- [ ] SonarQube quality gate passes: execution is pending.
-- [ ] Schema, permissions, secrets and deletion behavior reviewed: unit/config
-  checks and the bootstrap migration passed; complete live cascade/graph and
-  scoped Neo4j privilege verification remain open.
-- [x] Documentation updated with the exact evidence and unresolved requirements.
+- [x] Unchanged application baseline: 76 Java tests, 62 frontend tests, production builds and portable Chrome/Firefox checks passed.
+- [x] Current source verification: 24 Python tests passed, five POSIX cases skipped; Java 17 trust-helper fixtures and 38 configuration contracts passed.
+- [x] Two new persistence/security E2E scenarios compile; all seven Chrome scenarios collect.
+- [ ] Full post-reinstall startup and live tests: pending while the user keeps Neo4flix running on the shared 4 GB Docker runtime.
+- [ ] Actual Jenkins/Sonar, Ansible deployment, centralized ingestion and measured replica failover: pending.
+- [ ] Owner sandbox verification, supported scoped Neo4j privileges, redundant infrastructure and recovery evidence: pending.
+- [ ] Remote PR, branch protection and independent human approval: pending; no merge performed.
 
-Current provisioning verification: 22 Windows Python tests passed, five POSIX
-tests skipped, and 38 configuration contracts passed. A new Linux/Ansible run
-is pending because WSL did not start. Earlier native Linux and Ansible syntax
-results are retained as baseline evidence, not a successful rerun.
+Docker's uninstall lost its old database disk despite keep-data. Fresh startup reached PostgreSQL after a Maven trust fix, then was stopped for the user's other application. No old data recovery or completed post-reinstall backup/restore is claimed. Prior build/bootstrap/Linux results remain historical evidence. See FINAL-AUDIT.md and DOCKER-RECHECK.md.
 
-## Review
-
-Keep this work unmerged until live checks, the required infrastructure/security
-gates, branch protection and an independent reviewer approval are complete.
-The existing course repository contains `feature/admin-platform`; its API
-returned 403, so remote PR/protection setup remains pending. No approval has
-been fabricated. See FINAL-AUDIT.md and INFRASTRUCTURE-GATES.md for the full list.
+The source is backed up on the course repository's `feature/admin-platform` branch, with its remote revision verified. The repository API previously returned 403. Keep the change unmerged until the applicable runtime, security and review gates are complete.

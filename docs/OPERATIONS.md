@@ -65,7 +65,10 @@ The travel service accepts optional `NEO4J_URI` and `NEO4J_USERNAME` properties.
 
 If package downloads fail because this computer uses an organization TLS proxy,
 export its already trusted root certificates to a PEM file and set
-`BUILD_CA_FILE` to that file. Then build with
+`BUILD_CA_FILE` to that file. Maven merges the bundle with its standard public
+roots in a temporary in-memory build mount; the supplied CA and temporary
+trust store are not copied into application images. TLS checks remain enabled.
+Then build with
 `docker compose -f compose.build.yml -f compose.build-ca.yml build`.
 Use only roots approved for the build host; never disable certificate verification.
 The optional BuildKit mount supplies trust to Alpine and npm downloads only.
