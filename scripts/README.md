@@ -12,3 +12,17 @@ On POSIX hosts bootstrap sets umask `077` before writing, keeps `.secrets/` at `
 Windows retains the existing user-profile ACL. The script does not alter home-directory ACLs; keep the checkout and `.secrets/` within the owner's protected account directories. Actual Docker startup is a separate validation from these filesystem checks.
 
 Run `python -m unittest discover -s scripts/tests -v` to check the isolated permission helper without invoking bootstrap or Docker. POSIX mode checks require a native Linux filesystem; on Windows they are explicitly skipped. On this laptop they can run under WSL with temporary fixtures in `/tmp`.
+
+The live `dashboard/e2e/persistence.spec.ts` suite uses `test-database-query.py`
+to query this checkout's PostgreSQL and Neo4j containers. Run it only against
+the local test deployment; remote URLs are skipped. Queries travel over stdin,
+and the helper never prints database credentials. Tests create uniquely named
+fixtures and remove them in cleanup. They verify stored session/throttle
+deadlines and move only the fixture's deadline into the past; they do not wait
+eight hours or change the host clock. The second case verifies real SQL
+rollback, payment-history references, and graph content after edits, replay
+and deletion. From `dashboard`, run:
+
+```sh
+node node_modules/@playwright/test/cli.js test --project=chrome --grep database
+```
