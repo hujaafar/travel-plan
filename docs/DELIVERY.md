@@ -13,13 +13,13 @@ python scripts/bootstrap.py
 docker compose -f compose.yml -f compose.tools.yml --profile tools up -d --build jenkins sonar-db sonarqube sonar-tls
 ```
 
-Jenkins: `https://localhost:18443`, admin password `JENKINS_ADMIN_PASSWORD` in `.secrets/bootstrap.json`. The controller has **zero build executors** and authenticated access. Attach a dedicated Linux build agent with label `travel-plan-build`, JDK 17+, Maven 3.9+, Node 22+, Python, Ansible, Docker CLI/Compose, and a disposable Docker daemon. The agent Dockerfile documents the base toolchain; it is not a preconnected Jenkins agent.
+Jenkins: `https://localhost:18443`, admin password `JENKINS_ADMIN_PASSWORD` in `.secrets/bootstrap.json`. The controller has **zero build executors** and authenticated access. The agent image supplies Java 21, Maven, Node 22, Python, Ansible, Docker CLI/Compose and browser system dependencies. The full pipeline requires a dedicated agent with label `travel-plan-build` and a disposable TLS-authenticated Docker daemon. A separate `travel-plan-review` container is configured locally for the candidate review pipeline without any Docker socket or application secrets.
 
 SonarQube: `https://localhost:19443`. Complete the vendor's initial account setup and change its initial password before exposing it. Create project `travel-plan`; add a project-scoped analysis token to Jenkins as a SonarQube server named `travel-plan-sonar`. Configure the SonarQube webhook to the Jenkins `/sonarqube-webhook/` endpoint and validate TLS trust. The services can reach each other through the Docker egress network using their service names, while host ports remain loopback-bound.
 
 The supplied SonarQube Community Build supports main-branch analysis. In the Jenkins multibranch job, **both Sonar analysis and its quality-gate wait run only on `main`**. PR and other feature-branch jobs skip both stages, so they neither request unsupported PR analysis nor publish their code into the main Sonar project. They still run Java units, dashboard build/unit/format checks, dependency auditing, and container builds. Require these Jenkins checks and an independent human review before merging. The Community main-branch gate runs after the merge and blocks staging deployment; it does not provide a pre-merge Sonar PR gate. Meeting a review requirement for Sonar analysis on every PR needs a supported PR-analysis offering and its Git-host integration, configured separately. No license, cloud project, or independent approval has been supplied. See the current [SonarQube feature comparison](https://docs.sonarsource.com/sonarqube-community-build/feature-comparison-table).
 
-SonarQube may require a larger Linux `vm.max_map_count` and at least 2 GB memory. Do not change the host sysctl blindly: follow the vendor's deployment requirements. Running the entire tools profile alongside the dashboard may exceed a laptop's memory budget.
+Follow SonarQube's current host prerequisites and memory recommendations. The optional `compose.tools.local.yml` bounds the web/compute heaps for staged local checks; it does not disable Elasticsearch bootstrap checks or establish production sizing. Run CI separately from the application on this laptop. See [operations](OPERATIONS.md) for the local review procedure and [Sonar host requirements](https://docs.sonarsource.com/sonarqube-community-build/server-installation/server-host-requirements).
 
 Container builds use `compose.build.yml`, a separate model with the same image tags, Dockerfiles and build arguments as the runtime deployment, without runtime secrets, mounts or ports. A fresh PR checkout can build it without bootstrapping Vault or receiving production credentials:
 
@@ -44,6 +44,8 @@ ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
 ```
 
 Copy `inventory.example.ini`, substitute the actual SSH host, and keep real inventory credentials outside Git. The example IP is documentation-only. The playbook does not publish a public domain or install production database replication. Its default ports remain localhost-only on the deployment host; use authenticated SSH forwarding for review.
+
+The separate `infra/ansible/workstation.yml` has been executed against this Windows Docker Desktop installation from WSL. It provisions the existing checkout through Windows Python and verifies the running databases and TLS. This does not claim that the remote Ubuntu package-installation recipe has been exercised on an independent server.
 
 ## Maintenance
 

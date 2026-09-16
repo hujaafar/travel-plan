@@ -61,6 +61,36 @@ No backup policy is claimed to be in place until a restore has been tested. The 
 
 The travel service accepts optional `NEO4J_URI` and `NEO4J_USERNAME` properties. Defaults remain `bolt+s://neo4j:7687` and the local `neo4j` account; the password continues to come from the existing scoped Vault configuration. Supply these settings to the service through the approved deployment configuration, preserve a verified-TLS URI and trusted certificates, and use a scoped runtime account only on a Neo4j offering that supports it. Renaming a Community account does not remove its implied admin privileges. No alternate database or license was activated in this pass.
 
+Spring's Neo4j health indicator and the outbox projector use the same managed driver. Its connection settings come from the existing Vault properties. A healthy TCP listener alone does not prove database authentication; run `verify-infrastructure.py` after startup.
+
+## Session verification during replica failure
+
+Compose routes travel/payments session checks through Caddy's unpublished HTTPS listener on port 9444. That listener accepts only `/internal/session`; identity still requires the exact service key. DNS discovery and bounded retries cover this read-only operation. The public listener rejects internal paths. Application writes retain Caddy's default safe retry matching. Kubernetes may use its identity Service through the default `APP_AUTH_URL` value instead.
+
+An authentication dependency outage returns 503 with `Retry-After`, fails closed, and preserves the browser's session state. An expired/revoked session still returns 401. No request reaches its business controller without a verified user.
+
+## Ansible on this Windows workstation
+
+The Ubuntu server recipe remains `infra/ansible/deploy.yml`. For an existing Docker Desktop installation with WSL, use the separate workstation playbook. It calls Windows Python and Docker Desktop so bind mounts resolve correctly; it does not install a second Docker daemon in WSL.
+
+Copy `infra/ansible/workstation.example.yml` outside Git, set the actual checkout and Python paths, then run from a WSL Ansible controller:
+
+```sh
+ansible-playbook -i localhost, infra/ansible/workstation.yml -e @your-workstation.yml
+```
+
+The default builds and deploys two replicas per Java service, then verifies TLS and database privileges/convergence. Set `build_images: false` only when those images already contain the intended revision. Provisioning output is private. Re-running preserves database volumes and existing application passwords, while renewing AppRole credentials; the provisioning task therefore reports a change.
+
+## Local Jenkins and Sonar review
+
+`infra/jenkins/agent.Dockerfile` supplies Java 21, Maven, Node 22, Python, Ansible, Docker CLI/Compose and browser system dependencies. Run jobs as the unprivileged `jenkins` user. The controller keeps zero executors; its image installs the plugins required by both pipelines. Configuration lives outside the persistent home volume so rebuilding the image applies configuration updates.
+
+The full `Jenkinsfile` targets an isolated `travel-plan-build` agent with a dedicated TLS-authenticated build daemon and configured SCM/Sonar/deployment credentials. Never attach an untrusted PR job to the workstation's Docker socket. Browser binaries install as the agent user; OS packages are prepared in the agent image.
+
+`infra/jenkins/Jenkinsfile.review` is a separate, explicit local candidate review. Its `travel-plan-review` agent has no Docker daemon or application secrets. It verifies a read-only Git archive and checksum at `/review`, runs Java/frontend/provisioning/configuration checks, and submits to the private `travel-plan-review` Sonar project using the scoped Jenkins credential `travel-plan-review-sonar`. Sonar's quality gate is required to pass. This is not a Git-host PR event or a deployment job.
+
+On a 4 GB Docker runtime, stop the application/monitoring containers before starting the tools with `compose.tools.local.yml`; that overlay reduces Sonar web/compute heaps without disabling Elasticsearch checks. Restore the application after CI finishes. Keep the existing volumes. If Sonar itself restarts, restart `sonar-tls` as well because it shares Sonar's network namespace. Never run all profiles concurrently on this laptop.
+
 ## Building behind an organization TLS proxy
 
 If package downloads fail because this computer uses an organization TLS proxy,

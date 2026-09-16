@@ -7,6 +7,11 @@ on a failed stage instead of announcing an unavailable URL. An optional
 `BUILD_CA_FILE` selects the build-time organization CA overlay.
 All generated credentials, PKI and Vault recovery material stay in ignored `.secrets/`.
 
+`python scripts/prepare-ci-review.py` exports only a clean committed Git revision
+to `work/ci-review`, with a SHA-256 checksum and revision file. Mount that directory
+read-only at `/review` in the dedicated agent for `infra/jenkins/Jenkinsfile.review`.
+The archive contains no ignored working files or local credentials.
+
 On POSIX hosts bootstrap sets umask `077` before writing, keeps `.secrets/` at `0700`, and restricts operator provisioning files, the Vault root token, CA private key and root `.env` to `0600`. It repairs existing operator-file modes on rerun. The specifically mounted per-service TLS/AppRole files, PostgreSQL init SQL and Grafana provisioning remain readable inside their non-root containers; the private host parent prevents other host users from reaching those exports. Do not mount the entire `.secrets/` directory into an application container.
 
 Windows retains the existing user-profile ACL. The script does not alter home-directory ACLs; keep the checkout and `.secrets/` within the owner's protected account directories. Actual Docker startup is a separate validation from these filesystem checks.
