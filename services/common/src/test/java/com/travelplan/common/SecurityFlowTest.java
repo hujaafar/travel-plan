@@ -55,8 +55,25 @@ class SecurityFlowTest {
     when(verifier.verify("opaque")).thenThrow(new IllegalStateException("identity unavailable"));
     var chain = mock(FilterChain.class);
     filter.doFilter(request("GET", "/api/travels"), response, chain);
-    assertThat(response.getStatus()).isEqualTo(401);
+    assertThat(response.getStatus()).isEqualTo(503);
+    assertThat(response.getHeader("Retry-After")).isEqualTo("2");
     assertThat(response.getContentAsString()).doesNotContain("identity unavailable");
+    verifyNoInteractions(chain);
+  }
+
+  @Test
+  void anExpiredRemoteSessionStillRequiresSignIn() throws Exception {
+    when(verifier.verify("opaque"))
+        .thenThrow(
+            org.springframework.web.client.HttpClientErrorException.create(
+                org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "expired",
+                org.springframework.http.HttpHeaders.EMPTY,
+                new byte[0],
+                null));
+    var chain = mock(FilterChain.class);
+    filter.doFilter(request("GET", "/api/travels"), response, chain);
+    assertThat(response.getStatus()).isEqualTo(401);
     verifyNoInteractions(chain);
   }
 

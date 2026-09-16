@@ -161,7 +161,11 @@ services:
       }
     image: travel-plan-travel:1.0.0
     environment:
-      { TLS_PASSWORD: "${TLS_PASSWORD}", APP_ORIGIN: "https://localhost:8443" }
+      {
+        TLS_PASSWORD: "${TLS_PASSWORD}",
+        APP_ORIGIN: "https://localhost:8443",
+        APP_AUTH_URL: "https://dashboard:9444",
+      }
     volumes: [travel-runtime:/run/secrets:ro, ./.secrets/certs/travel:/certs:ro]
     depends_on:
       {
@@ -180,7 +184,11 @@ services:
       }
     image: travel-plan-payments:1.0.0
     environment:
-      { TLS_PASSWORD: "${TLS_PASSWORD}", APP_ORIGIN: "https://localhost:8443" }
+      {
+        TLS_PASSWORD: "${TLS_PASSWORD}",
+        APP_ORIGIN: "https://localhost:8443",
+        APP_AUTH_URL: "https://dashboard:9444",
+      }
     volumes:
       [payments-runtime:/run/secrets:ro, ./.secrets/certs/payments:/certs:ro]
     depends_on:

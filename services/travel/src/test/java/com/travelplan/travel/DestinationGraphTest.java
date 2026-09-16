@@ -121,7 +121,5 @@ class DestinationGraphTest {
         .run(
             startsWith("CREATE (t:Travel"),
             eq(Map.of("id", id.toString(), "title", "Changed title")));
-    graph.close();
-    verify(driver).close();
   }
 }

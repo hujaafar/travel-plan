@@ -87,7 +87,7 @@ describe("API requests and recoverable failures", () => {
       }),
     );
   });
-  it.each([403, 409])(
+  it.each([403, 409, 503])(
     "preserves a %s server validation/authorization error without signing out",
     async (status) => {
       vi.stubGlobal(

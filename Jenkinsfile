@@ -68,7 +68,7 @@ pipeline {
         sh 'python3 scripts/verify-infrastructure.py'
         sh 'python3 scripts/verify-logging.py --service-logs-only --report work/verification/logging.json'
         dir('dashboard') {
-          sh 'npx playwright install --with-deps chromium firefox'
+          sh 'npx playwright install chromium firefox'
           sh 'PLAYWRIGHT_CHROMIUM=1 npm run test:e2e'
         }
       }

@@ -14,8 +14,7 @@ jenkins:
             name: "admin"
             permissions: ["Overall/Administer"]
   crumbIssuer:
-    standard:
-      excludeClientIPFromCrumb: false
+    standard: {}
 unclassified:
   location:
     url: "https://localhost:18443/"

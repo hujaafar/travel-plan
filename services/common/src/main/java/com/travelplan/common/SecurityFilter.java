@@ -79,8 +79,12 @@ public class SecurityFilter extends OncePerRequestFilter {
       SessionUser user;
       try {
         user = verifier.verify(token(r));
-      } catch (Exception e) {
+      } catch (org.springframework.web.client.HttpClientErrorException.Unauthorized e) {
         error(s, 401, "Please sign in again");
+        return;
+      } catch (Exception e) {
+        s.setHeader("Retry-After", "2");
+        error(s, 503, "Authentication is temporarily unavailable. Please retry.");
         return;
       }
       if (user == null) {

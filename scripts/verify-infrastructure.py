@@ -46,6 +46,14 @@ try:
 except urllib.error.HTTPError as error:
     assert error.code == 401, error.code
 print('PASS gateway TLS and anonymous-access rejection')
+for address, expected in [('https://dashboard:9444/internal/session', 401), ('https://dashboard:8443/internal/session', 404)]:
+    request = urllib.request.Request(address, data=b'{}', headers={'Host': 'dashboard:9444' if ':9444/' in address else 'localhost:8443', 'Content-Type': 'application/json'})
+    try:
+        urllib.request.urlopen(request, context=ctx, timeout=15)
+        raise AssertionError('Internal session endpoint accepted anonymous access')
+    except urllib.error.HTTPError as error:
+        assert error.code == expected, error.code
+print('PASS private session listener requires service authentication; public listener rejects internal paths')
 """
 run(
     [
@@ -130,7 +138,7 @@ graph = run(
         "neo4j",
         "sh",
         "-c",
-        'JAVA_OPTS="-Djavax.net.ssl.trustStore=/certificates/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit" '
+        'JAVA_OPTS="-Xms16m -Xmx96m -XX:ActiveProcessorCount=2 -Djavax.net.ssl.trustStore=/certificates/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit" '
         'cypher-shell -a bolt+s://neo4j:7687 -u neo4j -p "${NEO4J_AUTH#*/}" '
         '"MATCH (t:Travel) RETURN count(t) AS travels;"',
     ],

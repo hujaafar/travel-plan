@@ -299,7 +299,7 @@ export default function Overview({
           >
             <span>{m.label}</span>
             <strong>
-              {String(m.value).padStart(2, "0")}
+              <span data-metric-value>{String(m.value).padStart(2, "0")}</span>
               <small>{m.detail}</small>
             </strong>
           </div>

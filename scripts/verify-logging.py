@@ -61,7 +61,7 @@ def run(args):
                         time.sleep(2)
                     if not entry["loki"]:
                         raise VerificationError("Loki did not ingest both correlated services for " + service)
-                print("PASS " + service + " → identity request correlation" +
+                print("PASS " + service + " -> identity request correlation" +
                       (" and verified-TLS Loki ingestion" if entry["loki"] else " (Loki explicitly skipped)"))
         report["passed"] = True
     except BaseException as error:

@@ -21,9 +21,9 @@ async function signIn(page: Page) {
   await expect(
     page.getByRole("heading", { name: "The departure desk.", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.locator(".metric").first().locator("strong"),
-  ).not.toHaveText("00");
+  await expect(page.locator("[data-metric-value]").first()).not.toHaveText(
+    "00",
+  );
 }
 
 test.beforeEach(async ({ page }) => {
@@ -153,24 +153,23 @@ test("session expiry clears open dialogs and the next sign-in starts with fresh 
     await expect(page.locator(".login-form")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    const pending: Array<() => Promise<void>> = [];
+    const pending: Array<() => void> = [];
     const dataRoutes = /\/api\/(travels|users|payments)$/;
     await page.route(dataRoutes, async (route) => {
-      pending.push(() => route.continue());
+      await new Promise<void>((resume) => pending.push(resume));
+      await route.continue();
     });
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page.locator(".app")).toHaveAttribute("data-page", "overview");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.locator(".metric").first().locator("strong")).toHaveText(
+    await expect(page.locator("[data-metric-value]").first()).toHaveText("00");
+    await expect.poll(() => pending.length).toBe(3);
+    pending.forEach((resume) => resume());
+    await expect(page.locator("[data-metric-value]").first()).not.toHaveText(
       "00",
     );
-    await expect.poll(() => pending.length).toBe(3);
     await page.unroute(dataRoutes);
-    await Promise.all(pending.map((resume) => resume()));
-    await expect(
-      page.locator(".metric").first().locator("strong"),
-    ).not.toHaveText("00");
   }
 });
 

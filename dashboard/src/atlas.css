@@ -487,6 +487,9 @@ button:disabled {
 .desk-number.metric {
   border-color: var(--border);
 }
+.motion-ready .desk-number[data-sc-in] {
+  opacity: 1;
+}
 .desk-number > span,
 .desk-number.metric small {
   color: var(--soft);
