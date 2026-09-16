@@ -93,6 +93,11 @@ On a 4 GB Docker runtime, stop the application/monitoring containers before star
 
 ## Building behind an organization TLS proxy
 
+For Jenkins plugin downloads, set the same approved `BUILD_CA_FILE` and add
+`-f compose.tools-ca.yml` after `-f compose.tools.yml` when building Jenkins.
+The public roots and temporary trust store exist only in that build step;
+the controller still runs as the unprivileged `jenkins` user.
+
 If package downloads fail because this computer uses an organization TLS proxy,
 export its already trusted root certificates to a PEM file and set
 `BUILD_CA_FILE` to that file. Maven merges the bundle with its standard public
