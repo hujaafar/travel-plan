@@ -1,6 +1,9 @@
 {
  admin off
  auto_https off
+ # Java may omit SNI for a single-label Docker hostname. Keep TLS verification
+ # enabled and select the existing certificate containing dashboard and localhost.
+ default_sni dashboard
 }
 https://localhost:8443 {
  tls /certs/tls.crt /certs/tls.key
