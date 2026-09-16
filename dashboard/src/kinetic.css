@@ -88,7 +88,6 @@
   height: calc(100svh - 150px);
   min-height: 400px;
   max-height: 850px;
-  border-radius: 120px 120px 8px 8px;
   clip-path: inset(
     0 round calc(110px * (1 - var(--flight))) calc(110px * (1 - var(--flight)))
       4px 4px

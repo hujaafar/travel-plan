@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 public class IdentityController implements SessionVerifier {
+  private static final SecureRandom RANDOM = new SecureRandom();
   private final JdbcTemplate db;
   private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder(12);
 
@@ -45,7 +46,7 @@ public class IdentityController implements SessionVerifier {
 
   private static String random() {
     byte[] bytes = new byte[32];
-    new SecureRandom().nextBytes(bytes);
+    RANDOM.nextBytes(bytes);
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 

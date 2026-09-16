@@ -108,9 +108,6 @@ function Modal({
         e.preventDefault();
         onClose();
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div className="modal-head">
         <h2>{title}</h2>
@@ -163,7 +160,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   return (
     <main className="login">
       <section className="login-story">
-        <a className="brand" href="#">
+        <a className="brand" href="#sign-in">
           <img src="/mark.svg" alt="" />
           travel<span>plan.</span>
         </a>
@@ -188,7 +185,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
           <MapPin size={15} /> Ubud, Bali
         </span>
       </section>
-      <section className="login-form">
+      <section className="login-form" id="sign-in">
         <div className="login-form-inner">
           <span className="eyebrow">YOUR ADMIN WORKSPACE</span>
           <h2>Welcome back.</h2>
@@ -223,7 +220,11 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                 {error}
               </p>
             )}
-            <button className="button primary login-submit" disabled={busy}>
+            <button
+              type="submit"
+              className="button primary login-submit"
+              disabled={busy}
+            >
               {busy ? (
                 <LoaderCircle className="spin" size={18} />
               ) : (
@@ -433,7 +434,14 @@ export default function App() {
       <a href="#main" className="skip">
         Skip to content
       </a>
-      {menu && <div className="nav-scrim" onClick={() => setMenu(false)} />}
+      {menu && (
+        <button
+          type="button"
+          className="nav-scrim"
+          aria-label="Close navigation"
+          onClick={() => setMenu(false)}
+        />
+      )}
       <aside className={"sidebar " + (menu ? "open" : "")}>
         <a
           href="#overview"
@@ -1852,7 +1860,7 @@ function EditorModal({
           <button className="button" type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="button primary" disabled={busy}>
+          <button type="submit" className="button primary" disabled={busy}>
             {busy ? (
               <LoaderCircle className="spin" size={17} />
             ) : (

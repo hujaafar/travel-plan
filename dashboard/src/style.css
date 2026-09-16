@@ -147,7 +147,7 @@ table {
   align-items: center;
   gap: 9px;
   text-decoration: none;
-  font-family: "DM Sans";
+  font-family: "DM Sans", sans-serif;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -1.3px;
@@ -499,7 +499,7 @@ nav button:hover,
 }
 .metric > strong {
   display: block;
-  font-family: "DM Sans";
+  font-family: "DM Sans", sans-serif;
   font-size: 32px;
   font-weight: 600;
   letter-spacing: -1px;
@@ -614,7 +614,7 @@ nav button:hover,
   font-size: 51px;
   line-height: 1;
   font-weight: 500;
-  font-family: "DM Sans";
+  font-family: "DM Sans", sans-serif;
   letter-spacing: -3px;
 }
 .departure-date > div {
@@ -988,7 +988,7 @@ nav button:hover,
 }
 .travel-row-end strong {
   font-size: 20px;
-  font-family: "DM Sans";
+  font-family: "DM Sans", sans-serif;
   font-weight: 600;
   letter-spacing: -0.7px;
 }
@@ -1642,7 +1642,7 @@ form textarea::placeholder {
   font-size: 24px;
   color: var(--ink);
   letter-spacing: -1px;
-  font-family: "DM Sans";
+  font-family: "DM Sans", sans-serif;
   font-weight: 600;
 }
 .toast {

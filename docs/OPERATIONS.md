@@ -98,6 +98,12 @@ For Jenkins plugin downloads, set the same approved `BUILD_CA_FILE` and add
 The public roots and temporary trust store exist only in that build step;
 the controller still runs as the unprivileged `jenkins` user.
 
+For a CI agent behind the same proxy, provide the approved public PEM bundle
+outside the source archive and set the node's `NODE_EXTRA_CA_CERTS` to that file.
+Point Maven and the Sonar scanner at a temporary Java trust store containing both
+standard roots and that bundle. The local review node uses its private CI setup
+for these machine-specific paths; no organization CA or credential is committed.
+
 If package downloads fail because this computer uses an organization TLS proxy,
 export its already trusted root certificates to a PEM file and set
 `BUILD_CA_FILE` to that file. Maven merges the bundle with its standard public
