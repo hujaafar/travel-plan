@@ -1,42 +1,21 @@
-# Docker reinstall and Travel Plan recheck
+# Docker recovery and current operation
 
-14 September 2026. **Docker is repaired; Travel Plan is not yet fully rechecked or ready for submission.**
+17 September 2026. Docker Desktop 4.90.0 / Engine 29.7.2 is running. Travel Plan has two replicas of each Java service. The user explicitly allocated the shared runtime to Travel Plan and allowed Neo4flix to remain temporarily paused. CI and monitoring are staged according to the final handoff; data volumes are retained.
 
-## What happened
+## Recovery history
 
-The coordinated Neo4flix task reinstalled Docker Desktop 4.90.0. Its keep-data uninstall nevertheless removed the old Docker data disk. No PostgreSQL/Neo4j dump was found in Travel Plan's repository or task workspace. Source archives are not database backups. Source, the Git remote and local `.secrets/` files survived, but old records have not been recovered. The user approved finishing a fresh installation with initial project data after being told about the loss.
+The 14 September reinstall, performed in the coordinated task, removed the old Docker database disk despite keep-data. Source and host-side credentials survived; old Travel Plan records were not recovered. The user authorized fresh initial project data. This remains a historical data-loss incident.
 
-This task independently confirmed Engine 29.7.2, 4,108,664,832 bytes of Docker memory and no running containers at handoff. Approximately 77 GB of disk space was free. The first fresh Maven build failed PKIX verification; a temporary build trust store now adds the existing approved PEM roots without changing global trust or disabling TLS checks.
+The 17 September fresh application startup and live tests passed. During CI, Docker/WSL became unresponsive. WSL memory remains capped at 4 GB; a 2 GB disk-backed swap buffer was enabled. The previous `.wslconfig` is preserved in the private task work area. No registry/security settings, application volumes or Docker data disk were changed during this recovery.
 
-The corrected startup advanced through image builds and reached PostgreSQL. The user then requested Neo4flix only, left open for viewing. Travel Plan's launcher was stopped, its residual healthy PostgreSQL container was cleanly stopped, and a final project-filtered check found no running Travel Plan containers. The fresh PostgreSQL volume remains. No complete post-reinstall Vault/application startup, live browser pass or database restore test is claimed.
+Docker then reported Windows error 1920 on `sailor-ingest.sock` and `docker-secrets-engine/engine.sock`. Only Docker-owned processes were stopped. The exact volatile runtime directories were preserved by verified directory renames, and Docker recreated them. The engine recovered. No factory reset, reinstall, pruning or volume deletion was used in this recovery. Similar failures are reported in [Docker issue 675](https://github.com/docker/desktop-feedback/issues/675). WSL swap behavior is documented by [Microsoft](https://learn.microsoft.com/en-us/windows/wsl/wsl-config).
 
-## Checks actually completed
+Package downloads behind the computer's TLS inspection initially failed certificate checks. Temporary build trust stores and the dedicated CI node use already trusted public roots; TLS verification remains enabled. Jenkins now includes its timestamp and JUnit plugins and runs builds on a separate unprivileged agent.
 
-| Check | Result |
-| --- | --- |
-| Reinstalled engine | Responsive, version 29.7.2 |
-| Current Python provisioning/build/verifier suite | 24 passed; five POSIX checks skipped; 29 collected |
-| Java build trust helper | Compiles for Java 17; valid root merge passes; empty/invalid bundles fail; base store remains unchanged |
-| Configuration contracts | 38 passed without daemon contact; current Ansible execution not run |
-| New database E2E source | TypeScript and formatting pass; all seven Chrome scenarios collect |
-| Fresh complete startup and live E2E | Pending; stack paused for Neo4flix |
-| Fresh database backup/restore | Prepared but not executed |
+## Current proof and operating limits
 
-Application baseline `5e5e1fb` retains 76 passing Java tests, 62 frontend tests, production builds and portable Chrome/Firefox design evidence. Product source is unchanged. Those results do not prove a running post-reinstall backend. See FINAL-AUDIT.md and TEST-MATRIX.md for the complete assignment matrix and provenance.
+All final images built, bootstrap completed, and the replicated stack became healthy. The current Chrome/Firefox, database/TLS, logging, failover, workstation Ansible and local Jenkins/Sonar results are in FINAL-AUDIT.md. Private PostgreSQL and Vault snapshots were saved outside Docker and restored in isolated fixtures; these are backups of the fresh records, not the lost pre-uninstall database.
 
-## Resume when capacity is available
+Run `python scripts/start.py --replicas 2` to rebuild/provision/start the verified replicated profile. Use `--no-build` only when the installed images match the intended source. The default laptop launcher uses one replica. Keep existing `.secrets` with its volumes; bootstrap unseals Vault and renews AppRole credentials.
 
-Keep the current WSL allocation and the user's active app undisturbed. From the Travel Plan checkout, once a test window is available:
-
-```sh
-python scripts/start.py
-python scripts/verify-infrastructure.py
-python scripts/verify-logging.py --service-logs-only
-cd dashboard
-node node_modules/@playwright/test/cli.js test --project=chrome
-node node_modules/@playwright/test/cli.js test --project=firefox
-```
-
-On this inspected network, set `BUILD_CA_FILE` to the existing approved public PEM bundle before the build. Use the installed compatible Firefox runtime; WSL Firefox and its environment are separate from Windows Chrome. Full browser checks include the two database scenarios. They create unique temporary records and clean them up; their stored-deadline changes affect only those fixtures.
-
-After the single-replica checks, save a PostgreSQL custom-format dump and Vault Raft snapshot outside Docker, retain the matching private credentials securely, and verify restoration in an isolated database. No Travel Plan backup has been created since reinstall. Then use a suitable test window/host for two replicas, the explicit failover probe, centralized Loki ingestion, actual Jenkins/Sonar and Ansible deployment. Remote PR/protection, independent approval and owner payment sandbox verification remain separate gates. The existing scheduled follow-up is paused while Neo4flix remains open.
+Stop the application/monitoring before running Jenkins and Sonar on this laptop. Keep data volumes and use `compose.tools.local.yml` for bounded local Sonar heaps. Restore Travel Plan afterward. Never run all profiles simultaneously or use `down -v` for routine recovery. A normal stopped-container state is not a reason to reinstall Docker.

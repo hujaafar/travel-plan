@@ -2,7 +2,7 @@
 
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
-**Current verification:** 76 Java tests, 62 frontend tests and 16 native Linux provisioning/verifier tests pass; Java line coverage is 95.8%. Production builds, 37 configuration contracts and an actual Ansible syntax check pass. The dashboard handles partial service failures and bounded request timeouts, and travel lists use a consistent three-query snapshot. Docker startup is still blocked on this laptop; live delivery/failover evidence, end-to-end HA, Neo4j least privilege and independent PR approval remain open. Read the [submission audit](docs/FINAL-AUDIT.md) before claiming full assignment completion.
+**Current verification (17 September):** 78 Java tests, 63 frontend tests and all 29 Linux provisioning tests pass. The local Jenkins review and its strengthened Sonar gate passed with zero detected bugs or vulnerabilities. The rebuilt application runs with two Java replicas per service; live Chrome/Firefox, database/TLS, Ansible workstation deployment, logging and isolated database/Vault restore checks have executed. End-to-end infrastructure HA, scoped Neo4j runtime privileges, owner payment sandbox verification and Git-host PR automation/independent approval remain open. Read the [submission audit](docs/FINAL-AUDIT.md) for final measurements and scope.
 
 Unified Atlas carries the requested Scroll Craft design through one consistent product: an Earth-to-destination opening, expanding departure photograph, drawn route, independent ticket, itinerary spread, dimensional gallery and orbital close, followed by administration pages using the same ink, ivory and copper palette. Shared headings, buttons, tables, forms, calendar, settings, help and login follow the same visual system. Native scrolling controls the scenes; mobile uses a swipeable gallery. Motion is always enabled at the user's explicit request, including when an old off choice is stored or the OS requests reduced motion. Direct chapters and skip controls remain available.
 
@@ -70,8 +70,9 @@ flowchart LR
     Gateway -->|HTTPS, round robin| Identity[Identity replicas]
     Gateway -->|HTTPS, round robin| Travel[Travel replicas]
     Gateway -->|HTTPS, round robin| Payments[Payment replicas]
-    Travel -->|HTTPS session verification| Identity
-    Payments -->|HTTPS session verification| Identity
+    Travel -->|HTTPS session verification| PrivateAuth[Private Caddy listener 9444]
+    Payments -->|HTTPS session verification| PrivateAuth
+    PrivateAuth -->|Verified HTTPS, service key| Identity
     Identity -->|TLS| PG[(PostgreSQL)]
     Travel -->|TLS| PG
     Payments -->|TLS| PG
@@ -98,7 +99,7 @@ npm test
 npm run test:e2e
 ```
 
-The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow and WCAG accessibility rules. It has not been rerun against this frontend revision while Docker is offline. Browser tests do not make real payments. They create and clean up their own records.
+The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow and WCAG accessibility rules. The current live run passed seven Chrome scenarios and five Firefox workspace scenarios; the two direct database-fixture cases ran through Chrome on Windows. Browser tests do not make real payments. They create and clean up their own records.
 
 Use `scripts/verify-infrastructure.py` for verified internal TLS, PostgreSQL transport enforcement, and graph projection checks. [VERIFICATION.md](docs/VERIFICATION.md) records the latest observed results and limitations.
 

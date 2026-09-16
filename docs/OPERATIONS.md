@@ -55,7 +55,7 @@ Grafana is at `https://localhost:13443`; username `admin`, password `GRAFANA_ADM
 
 Use PostgreSQL `pg_dump -Fc` and restore into a separate clean database to test it. On PowerShell, redirect binary output through a binary-safe Python subprocess or a file inside the container; avoid text pipelines. Back up `.secrets/` through an encrypted, access-controlled channel. Use Vault Raft snapshots after unsealing. Neo4j's graph can be rebuilt from PostgreSQL by enqueuing all current travel IDs, but take a Neo4j database dump if other graph data is introduced.
 
-No backup policy is claimed to be in place until a restore has been tested. The current development deployment uses named volumes on one Docker host.
+Local PostgreSQL dump restoration and a Vault snapshot restoration have passed in isolated fixtures. Host-side private backups are in `.secrets/backups/`; they are excluded from source and handoff ZIPs. This is not an off-device backup policy or multi-host disaster recovery. The deployment still uses named volumes on one Docker host.
 
 ## Graph connection on an approved deployment
 
@@ -66,6 +66,8 @@ Spring's Neo4j health indicator and the outbox projector use the same managed dr
 ## Session verification during replica failure
 
 Compose routes travel/payments session checks through Caddy's unpublished HTTPS listener on port 9444. That listener accepts only `/internal/session`; identity still requires the exact service key. DNS discovery and bounded retries cover this read-only operation. The public listener rejects internal paths. Application writes retain Caddy's default safe retry matching. Kubernetes may use its identity Service through the default `APP_AUTH_URL` value instead.
+
+Caddy's `default_sni dashboard` selects the existing local certificate when a Java client omits SNI for the single-label Docker hostname. Java still checks its CA chain and dashboard hostname; TLS verification is never disabled.
 
 An authentication dependency outage returns 503 with `Retry-After`, fails closed, and preserves the browser's session state. An expired/revoked session still returns 401. No request reaches its business controller without a verified user.
 

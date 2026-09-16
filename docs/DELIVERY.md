@@ -54,3 +54,9 @@ Renovate configuration proposes dependency updates without auto-merging. Review 
 ## Reproducible review gates
 
 The pipeline now validates the four Compose models and requires actual Ansible syntax checks in its configuration stage. Its trusted integration stage also runs the TLS/database verifier and authenticated service-log correlation; `--service-logs-only` explicitly does not prove Loki ingestion. Configuration and integration reports are archived by Jenkins. See [INFRASTRUCTURE-GATES.md](INFRASTRUCTURE-GATES.md) for the separate centralized-ingestion and opted-in replica-failure commands. No actual Jenkins or remote deployment success is claimed from these source edits.
+
+## Executed local candidate review
+
+Jenkins job `travel-plan-local-review` build **6** passed against committed application source `5380cfe659520ccf6cb49b096a534b8ab2d25fe1`. It ran Java, frontend, native Linux provisioning and configuration/Ansible checks, then submitted Java and dashboard sources to the private Sonar project. The candidate gate copies Sonar way and adds whole-project conditions: zero bugs, zero vulnerabilities and at most 3% duplicated lines. It passed without ignored conditions. The final runtime Caddy SNI correction was validated separately with real Java HTTPS, the infrastructure probe and both browsers. See FINAL-AUDIT.md for exact provenance.
+
+This local job consumes a verified Git archive. It has no SCM blame, Git-host PR webhook, independent reviewer, deployment credentials or application Docker socket. The configured main pipeline remains a separate deliverable requiring those integrations. Sonar reported 94 existing maintainability findings and 49.8% combined coverage; Java JaCoCo coverage is separately measured, and frontend LCOV is not imported. A passing gate is not a claim of zero maintainability debt or complete security assurance.
