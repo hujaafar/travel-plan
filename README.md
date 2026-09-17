@@ -1,5 +1,7 @@
 # Travel Plan
 
+Development and PR checks now run in the [GitHub working repository](https://github.com/hujaafar/travel-plan). The [course Gitea repository](https://learn.reboot01.com/git/hujaafar/travel-plan) is the final delivery destination. See [GitHub workflow and sync policy](docs/GITHUB-WORKFLOW.md).
+
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
 **Current verification (17 September):** 78 Java tests, 63 frontend tests and all 29 Linux provisioning tests pass. The local Jenkins review and its strengthened Sonar gate passed with zero detected bugs or vulnerabilities. The rebuilt application runs with two Java replicas per service; live Chrome/Firefox, database/TLS, Ansible workstation deployment, logging and isolated database/Vault restore checks have executed. [PR #1](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/1) is open against protected `main`; the completed implementation stays on `feature/admin-platform` until approval and merge. End-to-end infrastructure HA, scoped Neo4j runtime privileges, owner payment sandbox verification and Git-host PR automation/independent approval remain open. Read the [submission audit](docs/FINAL-AUDIT.md) for final measurements and scope.
