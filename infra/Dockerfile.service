@@ -6,7 +6,8 @@ COPY pom.xml .
 COPY dashboard/pom.xml dashboard/pom.xml
 COPY services services
 ARG SERVICE
-RUN --mount=type=cache,target=/root/.m2 \
+# Parallel service builds must not mutate Maven's local repository together.
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     --mount=type=secret,id=build_ca \
     --mount=type=tmpfs,target=/build-trust \
     if [ -s /run/secrets/build_ca ]; then \

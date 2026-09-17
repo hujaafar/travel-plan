@@ -87,6 +87,7 @@ jobs:
           python-version: '3.12'
       - name: Deploy two replicas through Ansible on Ubuntu
         run: |
+          set -o pipefail
           python -m pip install -r scripts/requirements.txt ansible-core==2.19.0
           ansible-galaxy collection install -r infra/ansible/requirements.yml
           mkdir -p work/verification
