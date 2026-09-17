@@ -23,7 +23,16 @@ class PostgresReadinessTest(unittest.TestCase):
                                 subprocess.CompletedProcess([], 0, b'1\n')])
         self.check(run)
         self.assertEqual(run.call_count, 2)
-        self.assertEqual(run.call_args.args[0][-2:], ['-c', 'SELECT 1'])
+        self.assertEqual(run.call_args.args[0][-2:],
+                         ['-c', "SELECT 1 WHERE current_setting('listen_addresses') <> ''"])
+
+    def test_temporary_init_server_and_shutdown_do_not_release_migration(self):
+        run = Mock(side_effect=[subprocess.CompletedProcess([], 0, b''),
+                                subprocess.CompletedProcess([], 2, b''),
+                                subprocess.CompletedProcess([], 0, b'1\n')])
+        self.check(run)
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual(self.now, 2)
 
     def test_missing_query_result_cannot_satisfy_readiness(self):
         run = Mock(return_value=subprocess.CompletedProcess([], 0, b''))
