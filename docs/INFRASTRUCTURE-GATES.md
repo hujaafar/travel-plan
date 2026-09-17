@@ -1,5 +1,7 @@
 # Infrastructure evidence before submission
 
+> Delivery update: the owner authorized a documented solo-maintainer merge exception on 17 September 2026. See [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md). Approval and merge statements below are the earlier audit snapshot; use the linked PRs for actual current status.
+
 The scripts below turn the outstanding infrastructure checks into repeatable gates. Their presence is not evidence that a deployment, failure test, or Jenkins run has passed. Keep the emitted JSON with the submitted revision and distinguish configuration checks from live results.
 
 ## Configuration and provisioning

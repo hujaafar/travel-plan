@@ -1,5 +1,7 @@
 # GitHub development and course delivery
 
+> Delivery update: the owner authorized a documented solo-maintainer merge exception on 17 September 2026. See [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md). Approval and merge statements below are the earlier audit snapshot; use the linked PRs for actual current status.
+
 The working repository is https://github.com/hujaafar/travel-plan. The owner explicitly approved making the source public. Before publication, all 376 existing Git-history blobs were checked for known generated secrets, private keys and GitHub-token patterns; none were found. This bounded scan is not a guarantee that every possible secret format is detectable.
 
 `github` is the development remote. `origin` remains the course repository at https://learn.reboot01.com/git/hujaafar/travel-plan. Both retain the same source history. `main` holds the initial foundation until independent review; current work is on `feature/admin-platform`. Do not treat the original foundation as an already reviewed implementation.

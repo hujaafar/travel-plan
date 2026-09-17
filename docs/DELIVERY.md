@@ -1,5 +1,7 @@
 # CI, review and deployment
 
+> Delivery update: the owner authorized a documented solo-maintainer merge exception on 17 September 2026. See [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md). Approval and merge statements below are the earlier audit snapshot; use the linked PRs for actual current status.
+
 ## Active development workflow
 
 The owner moved development to [GitHub PR #1](https://github.com/hujaafar/travel-plan/pull/1), with Gitea retained as the final course delivery destination. See [GITHUB-WORKFLOW.md](GITHUB-WORKFLOW.md) for the executed-on-PR Jenkins/Sonar and live deployment jobs, enforced GitHub checks and synchronization policy. The course setup below is retained as the earlier delivery configuration; it must not be mistaken for the active GitHub CI integration.
