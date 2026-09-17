@@ -40,6 +40,11 @@ def redacted(value):
     return value
 
 
+def sonar_password():
+    # Sonar requires all four character classes even for a long random secret.
+    return 'Ci9!' + secrets.token_urlsafe(36)
+
+
 def run(*args, capture=False, timeout=900):
     return subprocess.run(args, cwd=ROOT, check=True, timeout=timeout,
                           capture_output=capture, text=True)
@@ -65,8 +70,12 @@ class API:
         if content_type:
             headers['Content-Type'] = content_type
         request = urllib.request.Request(self.base + path, data=data, headers=headers)
-        with self.opener.open(request, timeout=30) as response:
-            return response.read()
+        try:
+            with self.opener.open(request, timeout=30) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            detail = redacted(error.read(2000).decode(errors='replace'))
+            raise urllib.error.HTTPError(error.url, error.code, detail, {}, None) from None
 
     def json(self, path, data=None):
         return json.loads(self.call(path, data) or b'{}')
@@ -100,9 +109,10 @@ def main():
     run(*compose, 'up', '-d', 'jenkins', 'sonar-db', 'sonarqube', 'sonar-tls')
     wait_for('Jenkins', lambda: 'numExecutors' in jenkins.json('/api/json?tree=numExecutors'))
     wait_for('SonarQube', lambda: sonar.json('/api/system/status').get('status') == 'UP')
-    password = mask(secrets.token_hex(32))
+    password = mask(sonar_password())
     sonar.call('/api/users/change_password', {'login': 'admin', 'previousPassword': 'admin', 'password': password})
-    sonar.password = password
+    # Do not retain a session established with the now-rotated default password.
+    sonar = API('https://localhost:19443', password)
     sonar.call('/api/projects/create', {'project': PROJECT, 'name': 'Travel Plan PR candidate', 'visibility': 'private'})
     token = mask(sonar.json('/api/user_tokens/generate', {'name': 'candidate-analysis', 'type': 'PROJECT_ANALYSIS_TOKEN', 'projectKey': PROJECT})['token'])
     gate_name = 'Travel Plan candidate'

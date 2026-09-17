@@ -1,5 +1,9 @@
 # CI, review and deployment
 
+## Active development workflow
+
+The owner moved development to [GitHub PR #1](https://github.com/hujaafar/travel-plan/pull/1), with Gitea retained as the final course delivery destination. See [GITHUB-WORKFLOW.md](GITHUB-WORKFLOW.md) for the executed-on-PR Jenkins/Sonar and live deployment jobs, enforced GitHub checks and synchronization policy. The course setup below is retained as the earlier delivery configuration; it must not be mistaken for the active GitHub CI integration.
+
 ## Branch workflow
 
 Work is on `feature/admin-platform`, with [PR #1](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/1) open against protected `main`. The default branch is the original foundation commit `19c9fdd22b9a68ceef1fe3930da4ccdf1be561a1`; the finished implementation is on the feature branch until review and merge. The foundation also needs independent review. The repository includes a Gitea PR template. No approval or merge is claimed.

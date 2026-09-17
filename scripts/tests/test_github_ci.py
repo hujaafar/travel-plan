@@ -12,6 +12,24 @@ spec.loader.exec_module(ci)
 
 
 class GitHubCISafetyTest(unittest.TestCase):
+    def test_sonar_password_meets_required_classes_even_with_uniform_random_output(self):
+        with patch.object(ci.secrets, 'token_urlsafe', return_value='a' * 48):
+            value = ci.sonar_password()
+        self.assertGreaterEqual(len(value), 12)
+        for pattern in ('[A-Z]', '[a-z]', '[0-9]', '[^A-Za-z0-9]'):
+            self.assertRegex(value, pattern)
+
+    def test_api_failure_preserves_status_but_redacts_echoed_secret(self):
+        with patch.object(ci.ssl, 'create_default_context'), patch.object(ci.urllib.request, 'build_opener') as build, patch.object(ci, 'PRIVATE', {'private-fixture-value'}):
+            api = ci.API('https://localhost:18443', 'private-fixture-value')
+            build.return_value.open.side_effect = ci.urllib.error.HTTPError(
+                'https://localhost:18443/test', 400, 'Bad Request', {}, io.BytesIO(b'invalid private-fixture-value'))
+            with self.assertRaises(ci.urllib.error.HTTPError) as caught:
+                api.call('/test')
+            self.assertEqual(caught.exception.code, 400)
+            self.assertNotIn('private-fixture-value', str(caught.exception))
+            self.assertIn('[REDACTED]', str(caught.exception))
+
     def test_refuses_local_or_self_hosted_runner_before_touching_services(self):
         for environment in ({}, {'GITHUB_ACTIONS': 'true', 'RUNNER_ENVIRONMENT': 'self-hosted'}):
             with self.subTest(environment=environment), patch.dict(ci.os.environ, environment, clear=True), patch.object(ci, 'run') as run:

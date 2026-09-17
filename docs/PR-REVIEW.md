@@ -1,5 +1,7 @@
 # Travel Plan admin platform and deployment review
 
+Active review: [GitHub PR #1](https://github.com/hujaafar/travel-plan/pull/1). The owner requested GitHub development followed by synchronization to the course repository. GitHub now runs the required Jenkins/Sonar and live-deployment checks automatically; inspect their current result on that PR. One independent approval remains required, and no merge is claimed. See GITHUB-WORKFLOW.md. The Gitea review below records the earlier course-side setup.
+
 [PR #1: Complete Atlas admin experience and harden Travel Plan deployment](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/1) is open. It has not been independently approved or merged. `main` is the original foundation; the completed implementation is on `feature/admin-platform`. Review the foundation as well as the subsequent diff.
 
 Adds Java identity, travel and payment administration services with PostgreSQL persistence, an idempotent Neo4j outbox, server sessions, RBAC and CSRF protection. The responsive Atlas dashboard shares its TP logo, controls, forms and native-scroll scenes across every page.
