@@ -4,6 +4,10 @@
  # Java may omit SNI for a single-label Docker hostname. Keep TLS verification
  # enabled and select the existing certificate containing dashboard and localhost.
  default_sni dashboard
+ # Compose publishes TCP only; do not advertise an unreachable HTTP/3 endpoint.
+ servers {
+  protocols h1 h2
+ }
 }
 https://localhost:8443 {
  tls /certs/tls.crt /certs/tls.key
@@ -80,7 +84,13 @@ https://localhost:8443 {
  }
  log {
   output stdout
-  format json
+  format filter {
+   wrap json
+   fields {
+    request>headers>X-Csrf-Token delete
+    request>headers>X-Service-Key delete
+   }
+  }
  }
 }
 

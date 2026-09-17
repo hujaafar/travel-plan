@@ -45,7 +45,9 @@ try:
     raise AssertionError('Anonymous API access was allowed')
 except urllib.error.HTTPError as error:
     assert error.code == 401, error.code
+    assert 'h3=' not in error.headers.get('Alt-Svc', ''), 'TCP-only ingress advertised an unreachable HTTP/3 endpoint'
 print('PASS gateway TLS and anonymous-access rejection')
+print('PASS TCP-only ingress does not advertise HTTP/3')
 for address, expected in [('https://dashboard:9444/internal/session', 401), ('https://dashboard:8443/internal/session', 404)]:
     request = urllib.request.Request(address, data=b'{}', headers={'Host': 'dashboard:9444' if ':9444/' in address else 'localhost:8443', 'Content-Type': 'application/json'})
     try:
