@@ -20,7 +20,8 @@ pipeline {
       }
     }
     stage('Java tests and coverage') {
-      steps { sh './mvnw -B -ntp verify' }
+      // A separate Sonar invocation needs reactor dependencies in the local repository.
+      steps { sh './mvnw -B -ntp install' }
       post { always { junit 'services/**/target/surefire-reports/*.xml' } }
     }
     stage('Dashboard checks') {

@@ -33,7 +33,7 @@ Preview results are separate from the real-service end-to-end suite below. The d
 
 ## Start on this Windows laptop
 
-Prerequisites: Docker Desktop running Linux containers, Python 3.10+, and JDK 17+ with `keytool`. Allow roughly 3 GB for the laptop application profile. Running Jenkins and SonarQube at the same time needs substantially more memory.
+Prerequisites: Docker Desktop running Linux containers, Python 3.10+, and JDK 17+ with `keytool`. Allocate at least 4 GB to Docker with 2 GB of swap for the laptop profile; fresh Vault processes need additional startup headroom. Run Jenkins/Sonar separately on a constrained laptop, or use the isolated GitHub workflow.
 
 ```powershell
 cd "$env:USERPROFILE\Desktop\travel-plan"
