@@ -192,7 +192,7 @@ println JsonOutput.toJson([secret:n.toComputer().getJnlpMac()])
         except urllib.error.HTTPError:
             report[label] = {'unavailable': True}
     try:
-        report['junit'] = jenkins.json(build_path + '/testReport/api/json?tree=failCount,skipCount,totalCount')
+        report['junit'] = jenkins.json(build_path + '/testReport/api/json?tree=failCount,skipCount,passCount')
     except urllib.error.HTTPError:
         report['junit'] = {'unavailable': True}
     (EVIDENCE / 'review.json').write_text(redacted(json.dumps(report, indent=2)) + '\n')
@@ -201,6 +201,9 @@ println JsonOutput.toJson([secret:n.toComputer().getJnlpMac()])
         raise RuntimeError('Jenkins pipeline failed; see sanitized evidence')
     if report['gate'].get('projectStatus', {}).get('status') != 'OK':
         raise RuntimeError('Sonar quality gate did not pass')
+    for name in ('lcov.info', 'coverage-summary.json'):
+        data = jenkins.call(build_path + '/artifact/dashboard/coverage/' + name).decode()
+        (EVIDENCE / name).write_text(redacted(data))
     print('PASS Jenkins and SonarQube for ' + revision)
 
 

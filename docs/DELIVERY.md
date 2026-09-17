@@ -53,7 +53,7 @@ ansible-playbook -i infra/ansible/inventory.ini infra/ansible/deploy.yml \
 
 Copy `inventory.example.ini`, substitute the actual SSH host, and keep real inventory credentials outside Git. The example IP is documentation-only. The playbook does not publish a public domain or install production database replication. Its default ports remain localhost-only on the deployment host; use authenticated SSH forwarding for review.
 
-The separate `infra/ansible/workstation.yml` has been executed against this Windows Docker Desktop installation from WSL. It provisions the existing checkout through Windows Python and verifies the running databases and TLS. This does not claim that the remote Ubuntu package-installation recipe has been exercised on an independent server.
+The separate `infra/ansible/workstation.yml` has been executed against this Windows Docker Desktop installation from WSL. It provisions the existing checkout through Windows Python and verifies the running databases and TLS. The GitHub live job now executes `deploy.yml` on a disposable Ubuntu 24.04 host using its already installed Docker/JDK (`manage_system_packages=false`); consult the current job result and archived Ansible log for execution evidence. The default package-installation branch remains enabled for bare Ubuntu servers and needs its own target verification. An existing Docker installation is checked explicitly before it is used.
 
 ## Maintenance
 

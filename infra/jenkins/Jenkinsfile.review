@@ -30,7 +30,7 @@ pipeline {
           sh 'npm ci'
           sh 'npx prettier --check src e2e scripts'
           sh 'npm run build'
-          sh 'npx vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/unit.xml'
+          sh 'npm run test:coverage -- --reporter=default --reporter=junit --outputFile.junit=test-results/unit.xml'
           sh 'npm audit --audit-level=moderate'
         }
       }
@@ -50,5 +50,5 @@ pipeline {
       }
     }
   }
-  post { always { archiveArtifacts artifacts: 'services/**/target/site/jacoco/**,work/verification/manifests.json', allowEmptyArchive: true } }
+  post { always { archiveArtifacts artifacts: 'services/**/target/site/jacoco/**,dashboard/coverage/**,work/verification/manifests.json', allowEmptyArchive: true } }
 }

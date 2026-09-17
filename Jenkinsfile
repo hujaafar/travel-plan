@@ -24,7 +24,7 @@ pipeline {
           sh 'npm ci'
           sh 'npx prettier --check src e2e scripts'
           sh 'npm run build'
-          sh 'npm test'
+          sh 'npm run test:coverage'
           sh 'npm audit --audit-level=moderate'
         }
       }
@@ -86,6 +86,6 @@ pipeline {
     }
   }
   post {
-    always { archiveArtifacts artifacts: 'services/**/target/site/jacoco/**', allowEmptyArchive: true }
+    always { archiveArtifacts artifacts: 'services/**/target/site/jacoco/**,dashboard/coverage/**', allowEmptyArchive: true }
   }
 }

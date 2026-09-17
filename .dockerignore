@@ -2,6 +2,8 @@
 .agents
 .secrets
 .env
+**/coverage
+**/.venv
 **/node_modules
 **/target
 **/dist

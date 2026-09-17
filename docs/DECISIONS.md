@@ -13,6 +13,7 @@
 | Native HTML dialog | Focus trapping, Escape handling and browser semantics without a modal library |
 | Playwright + axe | Actual Chrome/Firefox workflows, narrow viewport checks, explicit motion-policy checks and accessibility assertions |
 | Vitest | Small, fast unit checks for formatting, search, CSV safety and date-only handling |
+| Vitest V8 coverage | Uses the same pinned version as Vitest to produce LCOV for Sonar and a machine-readable summary. All TypeScript/TSX source is included, including untested files; only tests and type declarations are excluded. Browser E2E results remain separate from unit coverage. |
 | Caddy | TLS termination, verified upstream TLS, static files, DNS discovery and round-robin balancing |
 | Vault | Per-service AppRole policies and agent rendering rather than credentials baked into images |
 | Jenkins / SonarQube / Ansible | Required build, quality-gate and repeatable deployment ecosystem |

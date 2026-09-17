@@ -8,6 +8,8 @@
     source_dir: "{{ playbook_dir }}/../.."
     replica_count: 2
     deploy_tooling: false
+    # Pre-provisioned hosts (including disposable CI runners) keep their engine.
+    manage_system_packages: true
   pre_tasks:
     - name: Verify supported operating system
       ansible.builtin.assert:
@@ -15,6 +17,13 @@
           - ansible_facts.distribution == 'Ubuntu'
           - ansible_facts.distribution_release in ['jammy', 'noble']
         fail_msg: This package recipe supports Ubuntu 22.04 LTS or 24.04 LTS with the universe repository enabled.
+    - name: Validate deployment inputs
+      ansible.builtin.assert:
+        that:
+          - app_dir is match('^/.+')
+          - app_dir not in ['/', '/home', '/opt', '/usr', '/var', '/tmp']
+          - replica_count | int >= 1
+        fail_msg: Use a dedicated absolute application directory and a positive replica count.
     - name: Install system prerequisites
       ansible.builtin.apt:
         name:
@@ -27,11 +36,21 @@
           ]
         state: present
         update_cache: true
+      when: manage_system_packages | bool
     - name: Start Docker
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
+      when: manage_system_packages | bool
+    - name: Verify Docker daemon access
+      ansible.builtin.command:
+        argv: [docker, info, --format, "{{ '{{.ServerVersion}}' }}"]
+      changed_when: false
+    - name: Verify Docker Compose is available
+      ansible.builtin.command:
+        argv: [docker, compose, version]
+      changed_when: false
   tasks:
     - name: Create private deployment directory
       ansible.builtin.file:
@@ -63,7 +82,8 @@
         argv: ["{{ app_dir }}/.venv/bin/python", scripts/bootstrap.py]
         chdir: "{{ app_dir }}"
       no_log: true
-      changed_when: false
+      # Reapplying preserves stored records/passwords but rotates AppRole credentials.
+      changed_when: true
     - name: Deploy database and secret agents
       community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
