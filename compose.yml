@@ -50,7 +50,9 @@ services:
     networks: [backend]
     restart: unless-stopped
   vault:
-    mem_limit: 192m
+    # A fresh Linux image can exceed 192 MB during Vault initialization.
+    mem_limit: 512m
+    environment: { GOMEMLIMIT: 384MiB, GOMAXPROCS: "2" }
     image: hashicorp/vault:1.20
     command: server
     ports: ["127.0.0.1:18200:8200"]
@@ -65,6 +67,7 @@ services:
     restart: unless-stopped
   identity-agent:
     image: hashicorp/vault:1.20
+    environment: { GOMEMLIMIT: 192MiB, GOMAXPROCS: "2" }
     user: "0"
     entrypoint: ["sh", "/config/agent-entrypoint.sh"]
     command: agent -config=/config/identity-agent.hcl
@@ -75,7 +78,7 @@ services:
         timeout: 3s,
         retries: 30,
       }
-    mem_limit: 96m
+    mem_limit: 256m
     volumes:
       [
         ./infra/vault:/config:ro,
@@ -88,6 +91,7 @@ services:
     restart: unless-stopped
   travel-agent:
     image: hashicorp/vault:1.20
+    environment: { GOMEMLIMIT: 192MiB, GOMAXPROCS: "2" }
     user: "0"
     entrypoint: ["sh", "/config/agent-entrypoint.sh"]
     command: agent -config=/config/travel-agent.hcl
@@ -98,7 +102,7 @@ services:
         timeout: 3s,
         retries: 30,
       }
-    mem_limit: 96m
+    mem_limit: 256m
     volumes:
       [
         ./infra/vault:/config:ro,
@@ -111,6 +115,7 @@ services:
     restart: unless-stopped
   payments-agent:
     image: hashicorp/vault:1.20
+    environment: { GOMEMLIMIT: 192MiB, GOMAXPROCS: "2" }
     user: "0"
     entrypoint: ["sh", "/config/agent-entrypoint.sh"]
     command: agent -config=/config/payments-agent.hcl
@@ -121,7 +126,7 @@ services:
         timeout: 3s,
         retries: 30,
       }
-    mem_limit: 96m
+    mem_limit: 256m
     volumes:
       [
         ./infra/vault:/config:ro,
