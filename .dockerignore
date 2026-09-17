@@ -1,6 +1,7 @@
 .git
 .agents
 .secrets
+.env
 **/node_modules
 **/target
 **/dist

@@ -32,6 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Prepare isolated runner
+        timeout-minutes: 5
         run: |
           python -m pip install -r scripts/requirements.txt
           sudo sysctl -w vm.max_map_count=524288
@@ -44,12 +45,17 @@ jobs:
           docker build -f infra/jenkins/agent.Dockerfile -t travel-plan-ci-agent:github .
       - name: Execute Jenkins pipeline and Sonar gate
         run: python scripts/github-ci.py
+      - name: Diagnose failed CI startup
+        if: failure()
+        run: python scripts/ci-diagnostics.py
       - name: Upload sanitized Jenkins and Sonar evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: jenkins-sonar-evidence
-          path: work/github-ci/
+          path: |
+            work/github-ci/
+            work/verification/runtime-diagnostics.log
           if-no-files-found: warn
           retention-days: 14
       - name: Stop disposable CI services
@@ -96,6 +102,9 @@ jobs:
           npm run test:e2e
       - name: Verify Java replica recovery
         run: python scripts/verify-failover.py --run-failover --report work/verification/failover.json
+      - name: Diagnose failed application checks
+        if: failure()
+        run: python scripts/ci-diagnostics.py
       - name: Upload live test evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
