@@ -2,9 +2,13 @@
 
 ## Branch workflow
 
-Work starts on `feature/admin-platform`. Use a feature branch for subsequent changes, then a pull request against main. The repository includes a Gitea PR template. This local implementation does not claim that a remote reviewer has approved it or that branch protection has been configured.
+Work is on `feature/admin-platform`, with [PR #1](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/1) open against protected `main`. The default branch is the original foundation commit `19c9fdd22b9a68ceef1fe3930da4ccdf1be561a1`; the finished implementation is on the feature branch until review and merge. The foundation also needs independent review. The repository includes a Gitea PR template. No approval or merge is claimed.
 
-On the Git host, configure main to reject direct pushes, require at least one independent approval, dismiss stale approvals after changes, and require successful Jenkins checks. Configure SCM webhook delivery to a reachable authenticated Jenkins endpoint. Fork PRs must run without deployment or production credentials; use a trusted Jenkinsfile policy and restricted Sonar tokens.
+The saved Git-host rule rejects direct and force pushes to `main`, requires one approval and the exact status context `travel-plan/jenkins`, dismisses stale approvals, blocks rejected/outstanding reviews and outdated PRs, and applies to administrators without a bypass allowlist. Gitea currently shows the missing required status and zero approvals, so merge is blocked. There are no collaborators assigned.
+
+SCM-triggered checks and status publishing still need integration. Configure the [Jenkins Gitea integration](https://plugins.jenkins.io/gitea/) with a repository-scoped service credential supplied by the owner. The [Gitea Checks plugin](https://plugins.jenkins.io/gitea-checks/) publishes named statuses through the API and requires valid Gitea API credentials. Configure its check name to match `travel-plan/jenkins` exactly and verify that the reported SHA is the PR head. Publish pending before the run and success only after the full required checks pass; failures and aborted runs must never publish success. Do not copy build 6's result to a later PR revision.
+
+Use authenticated webhook delivery only when a reachable Jenkins endpoint is provided, or configure authenticated SCM polling while the controller is running. The current loopback-only laptop service is not an Internet webhook endpoint. A browser login does not supply a Jenkins service credential. Keep that credential in Jenkins' credential store, out of PR workspaces and source archives. Fork PRs must run without deployment or production credentials; use a trusted Jenkinsfile policy and restricted Sonar tokens. Verify an actual new PR commit triggers a build and updates the required status before calling the integration complete. Do not relax the protected branch while it is pending.
 
 ## Jenkins and SonarQube
 

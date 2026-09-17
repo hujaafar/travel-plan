@@ -52,7 +52,7 @@ The first identity probe took 30.87 seconds with eight failed requests. An unpub
 | Stripe and PayPal | Sandbox gateway administration and protected credential-test endpoints exist, with HTTP contract unit tests. Owner sandbox credentials have not been supplied or verified. Payment capture/refunds/webhooks are phase two. |
 | Responsive Chrome and Firefox | Current live browser checks passed. Earlier broader portable consistency/orbit evidence is historical; current portable design was rerun. Firefox WebGL and physical phones are not certified. |
 | Feature unit tests | 78 Java, 63 frontend and 29 provisioning tests passed. See TEST-MATRIX.md; coverage is not proof of all possible behavior. |
-| PR workflow, review and approved merges | Feature branch and review template supplied. Remote PR, protection rules, SCM webhook/check publishing and independent human approval remain pending. No merge was performed. |
+| PR workflow, review and approved merges | [PR #1](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/1) is open against protected `main`. Direct/force pushes are disabled; one approval and the exact `travel-plan/jenkins` status are required, including for administrators. SCM check publishing and independent human approval remain pending. Gitea visibly blocks merging; no merge was performed. |
 | TLS, private networking and Vault | Live transport checks passed; scoped AppRoles and separate SQL runtime roles are in use. The development CA is not a public-domain certificate. |
 | Least privilege | Application RBAC, SQL roles and Vault scopes verified. Neo4j Community's implied administrative privileges remain a gap. |
 | High availability | Incomplete: PostgreSQL, Neo4j, Vault, ingress and Docker host are single points of failure. Requires independent failure domains and a supported clustered Neo4j offering. |
@@ -61,9 +61,15 @@ The first identity probe took 30.87 seconds with eight failed requests. An unpub
 
 ## Remaining owner/environment gates
 
-1. Sign in to the course Git host, configure the main/PR workflow and required Jenkins checks, create the PR and obtain independent human approval. The local candidate job does not replace this.
+1. Connect SCM-triggered Jenkins checks to the open PR and obtain independent human approval. The Git host now enforces the exact `travel-plan/jenkins` status and one approval on `main`; neither is satisfied. No collaborator is currently assigned. The local candidate job does not replace an exact-revision PR run.
 2. Supply owner sandbox secrets through the documented Vault paths, then execute both protected Stripe/PayPal connection tests. Do not place keys in Git or chat.
 3. Provide a Neo4j deployment supporting scoped runtime privileges and a reviewed HA environment with redundant database, Vault and ingress services on independent hosts. No license, paid account or public domain was activated.
 4. Establish off-device protected backups, rotation, recovery targets and production capacity testing. Local lists are still unbounded; pagination and catalogue-scale load testing remain before large deployments.
 
 The earlier Docker uninstall lost the old data disk. Current checks use newly initialized project data; previous records were not recovered. The latest private backups are outside Docker under `.secrets/backups/` and are excluded from deliverables. Read DOCKER-RECHECK.md before any runtime repair.
+
+## Git-host review setup verified on 17 September
+
+`main` was created at the existing foundation commit `19c9fdd22b9a68ceef1fe3930da4ccdf1be561a1` and made the default branch. The completed implementation stays on `feature/admin-platform` until review. PR #1 initially contained the subsequent nineteen commits; this audit update is also submitted through that PR. The foundation itself had no independent review, so the reviewer must inspect its files as well as the PR diff. No history was rewritten, and creating the base branch does not retroactively establish reviewed development history.
+
+The saved protection rule also dismisses stale approvals, blocks rejected and outstanding requested reviews, blocks outdated PRs, and has no bypass allowlist. The PR page showed the required Jenkins check missing and **0 of 1** approvals. The collaborator list was empty. No reviewer access, API token or webhook endpoint was invented. See DELIVERY.md for the remaining CI integration contract.
