@@ -1,6 +1,13 @@
 {
  admin off
  auto_https off
+ # Java may omit SNI for a single-label Docker hostname. Keep TLS verification
+ # enabled and select the existing certificate containing dashboard and localhost.
+ default_sni dashboard
+ # Compose publishes TCP only; do not advertise an unreachable HTTP/3 endpoint.
+ servers {
+  protocols h1 h2
+ }
 }
 https://localhost:8443 {
  tls /certs/tls.crt /certs/tls.key
@@ -26,6 +33,7 @@ https://localhost:8443 {
     tls_trust_pool file /certs/ca.crt
    }
    lb_policy round_robin
+   lb_try_duration 3s
    fail_duration 10s
   }
  }
@@ -42,6 +50,7 @@ https://localhost:8443 {
     tls_trust_pool file /certs/ca.crt
    }
    lb_policy round_robin
+   lb_try_duration 3s
    fail_duration 10s
   }
  }
@@ -58,10 +67,14 @@ https://localhost:8443 {
     tls_trust_pool file /certs/ca.crt
    }
    lb_policy round_robin
+   lb_try_duration 3s
    fail_duration 10s
   }
  }
  handle /api/* {
+  respond "Not found" 404
+ }
+ handle /internal/* {
   respond "Not found" 404
  }
  handle {
@@ -71,6 +84,40 @@ https://localhost:8443 {
  }
  log {
   output stdout
-  format json
+  format filter {
+   wrap json
+   fields {
+    request>headers>X-Csrf-Token delete
+    request>headers>X-Service-Key delete
+   }
+  }
+ }
+}
+
+# Unpublished listener for read-only session verification. Identity still checks
+# the service key. Both hops verify TLS; business mutations are never retried here.
+https://dashboard:9444 {
+ tls /certs/tls.crt /certs/tls.key
+ handle /internal/session {
+  reverse_proxy {
+   dynamic a {
+    name identity
+    port 8443
+    refresh 2s
+   }
+   transport http {
+    tls
+    tls_server_name identity
+    tls_trust_pool file /certs/ca.crt
+    dial_timeout 1s
+   }
+   lb_policy round_robin
+   lb_try_duration 3s
+   lb_retry_match method POST
+   fail_duration 10s
+  }
+ }
+ handle {
+  respond "Not found" 404
  }
 }

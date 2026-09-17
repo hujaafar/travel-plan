@@ -21,9 +21,9 @@ await page.getByLabel("Password", { exact: true }).fill(ADMIN_PASSWORD);
 await page.getByRole("button", { name: "Sign in", exact: true }).click();
 await page
   .getByRole("heading", { level: 1 })
-  .filter({ hasText: "Your next chapter" })
+  .filter({ hasText: "The departure" })
   .waitFor();
-await page.locator(".journey-card").first().waitFor();
+await page.locator(".dispatch-cover").waitFor();
 await page.evaluate(() => document.fonts.ready);
 await page.screenshot({
   path: path.join(output, "dashboard-desktop.png"),

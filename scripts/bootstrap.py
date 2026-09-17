@@ -10,11 +10,14 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
+from secret_permissions import prepare_secret_storage, publish_runtime_exports
+from bootstrap_runtime import wait_for_postgres
+from process_runtime import run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 S = ROOT / ".secrets"
-S.mkdir(exist_ok=True)
+prepare_secret_storage(S, ROOT / ".env")
 state = S / "bootstrap.json"
 if state.exists():
     config = json.loads(state.read_text())
@@ -65,29 +68,12 @@ state.write_text(json.dumps(config, indent=2))
 from certificates import generate
 
 generate(S, config["TLS_PASSWORD"])
-subprocess.run(
-    ["docker", "compose", "up", "-d", "postgres", "neo4j", "vault"], check=True
+publish_runtime_exports(S)
+run_command(
+    ["docker", "compose", "up", "-d", "postgres"], check=True, timeout=90
 )
-for attempt in range(60):
-    result = subprocess.run(
-        [
-            "docker",
-            "compose",
-            "exec",
-            "-T",
-            "postgres",
-            "pg_isready",
-            "-U",
-            "postgres",
-            "-d",
-            "travelplan",
-        ],
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        break
-    time.sleep(1)
-subprocess.run(
+wait_for_postgres()
+run_command(
     [
         "docker",
         "compose",
@@ -105,18 +91,23 @@ subprocess.run(
     input=(ROOT / "infra/postgres/003-runtime-privileges.sql").read_bytes(),
     check=True,
     capture_output=True,
+    timeout=30,
 )
+# Graph initialization does not participate in secret provisioning. The normal
+# Compose/Ansible deployment starts Neo4j after this preparatory stage.
+run_command(["docker", "compose", "up", "-d", "vault"], check=True, timeout=90)
 
 
 def api(path, data=None, token=None, method=None):
     # Execute inside the private Docker network. This keeps host HTTPS interception
     # software out of the development certificate chain, while verifying TLS.
     worker = "import sys,json,ssl,urllib.request; p=json.load(sys.stdin); ctx=ssl.create_default_context(cafile='/certs/ca.crt'); h={'Content-Type':'application/json'}; h.update({'X-Vault-Token':p['token']} if p['token'] else {}); r=urllib.request.Request('https://vault:8200/v1/'+p['path'],data=None if p['data'] is None else json.dumps(p['data']).encode(),headers=h,method=p['method']); response=urllib.request.urlopen(r,context=ctx,timeout=10); print(response.read().decode() or '{}')"
-    result = subprocess.run(
+    result = run_command(
         [
             "docker",
             "run",
             "--rm",
+            "--memory=96m",
             "-i",
             "--network",
             "travel-plan_backend",
@@ -132,6 +123,7 @@ def api(path, data=None, token=None, method=None):
         ),
         capture_output=True,
         text=True,
+        timeout=30,
     )
     if result.returncode:
         if "HTTP Error 400" in result.stderr:
@@ -212,5 +204,6 @@ for service in ["identity", "travel", "payments"]:
             "secret_id"
         ]
     )
+publish_runtime_exports(S)
 print("Bootstrap complete. Login details: .secrets/admin-login.txt")
-print("Run docker compose up -d --build to start the dashboard and service replicas.")
+print("Run python scripts/start.py to build and wait for the local dashboard.")

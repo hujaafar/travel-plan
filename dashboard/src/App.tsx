@@ -1,3 +1,4 @@
+import Overview from "./Overview";
 import {
   useEffect,
   useRef,
@@ -26,25 +27,28 @@ import {
   MoreHorizontal,
   X,
   Check,
-  SlidersHorizontal,
   Menu,
   LogOut,
   HelpCircle,
   CheckCircle2,
   ShieldCheck,
-  Leaf,
   Plane,
   Hotel,
   Activity,
   Trash2,
   Pencil,
-  Eye,
   LoaderCircle,
-  Route,
-  ExternalLink,
   AlertCircle,
 } from "lucide-react";
 import { api, setCsrf } from "./api";
+import { travelPayload, userPayload, gatewayPayload } from "./formPayloads";
+import {
+  calendarAgenda,
+  calendarDateKey,
+  moveCalendarMonth,
+  travelsInPeriod,
+} from "./calendar";
+import { refreshWorkspace } from "./workspaceRefresh";
 import {
   type User,
   type Travel,
@@ -55,6 +59,8 @@ import {
   initials,
   matchesTravel,
   csvCell,
+  photo,
+  reconcileSessionUser,
 } from "./types";
 type Page =
   "overview" | "travels" | "users" | "payments" | "calendar" | "settings";
@@ -69,7 +75,6 @@ const nav = [
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
-const photo = (key: string) => "/images/" + key + ".jpg";
 const statusLabel = (value: string) => value.toLowerCase().replaceAll("_", " ");
 function Badge({ value }: { value: string }) {
   return (
@@ -102,9 +107,6 @@ function Modal({
       onCancel={(e) => {
         e.preventDefault();
         onClose();
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="modal-head">
@@ -158,7 +160,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   return (
     <main className="login">
       <section className="login-story">
-        <a className="brand" href="#">
+        <a className="brand" href="#sign-in">
           <img src="/mark.svg" alt="" />
           travel<span>plan.</span>
         </a>
@@ -183,11 +185,15 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
           <MapPin size={15} /> Ubud, Bali
         </span>
       </section>
-      <section className="login-form">
+      <section className="login-form" id="sign-in">
         <div className="login-form-inner">
           <span className="eyebrow">YOUR ADMIN WORKSPACE</span>
           <h2>Welcome back.</h2>
-          <p>Sign in and pick up where your journey left off.</p>
+          <p>
+            {window.TRAVEL_PLAN_PREVIEW
+              ? "Design preview. Use any nonempty password to reopen the sample workspace."
+              : "Sign in and pick up where your journey left off."}
+          </p>
           <form onSubmit={submit}>
             <label>
               Email address
@@ -206,7 +212,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                 type="password"
                 autoComplete="current-password"
                 required
-                maxLength={128}
+                maxLength={72}
               />
             </label>
             {error && (
@@ -214,7 +220,11 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                 {error}
               </p>
             )}
-            <button className="button primary login-submit" disabled={busy}>
+            <button
+              type="submit"
+              className="button primary login-submit"
+              disabled={busy}
+            >
               {busy ? (
                 <LoaderCircle className="spin" size={18} />
               ) : (
@@ -225,7 +235,10 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
             </button>
           </form>
           <p className="login-note">
-            <ShieldCheck size={16} /> Secure administrator access
+            <ShieldCheck size={16} />{" "}
+            {window.TRAVEL_PLAN_PREVIEW
+              ? "Local sample data. No live connections."
+              : "Secure administrator access"}
           </p>
         </div>
         <p className="login-footer">
@@ -237,6 +250,10 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   );
 }
 export default function App() {
+  const sessionRevision = useRef(0);
+  const refreshRevision = useRef(0);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const revisionAtRender = sessionRevision.current;
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -263,46 +280,92 @@ export default function App() {
   const canTravel = user?.role !== "VIEWER";
   const admin = user?.role === "ADMIN";
   const notify = (message: string) => {
+    if (revisionAtRender !== sessionRevision.current) return;
+    window.clearTimeout(toastTimer.current);
     setToast(message);
-    window.setTimeout(() => setToast(""), 4500);
+    toastTimer.current = window.setTimeout(() => setToast(""), 4500);
   };
+  function clearSession() {
+    sessionRevision.current += 1;
+    window.clearTimeout(toastTimer.current);
+    setUser(null);
+    setCsrf("");
+    setTravels([]);
+    setUsers([]);
+    setGateways([]);
+    setEditor(null);
+    setDetail(null);
+    setRemove(null);
+    setSearch("");
+    setFilter("ALL");
+    setPage("overview");
+    setMenu(false);
+    setHelp(false);
+    setToast("");
+    setError("");
+    setLoading(false);
+    setDeleting(false);
+    setCalendarDate(new Date());
+    setActiveDay(null);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
   const login = (u: User) => {
+    sessionRevision.current += 1;
     setUser(u);
     setCsrf(u.csrf || "");
   };
   useEffect(() => {
+    let active = true;
+    const revision = sessionRevision.current;
     api<User>("/auth/me")
-      .then(login)
+      .then((u) => {
+        if (active && revision === sessionRevision.current) login(u);
+      })
       .catch(() => {})
-      .finally(() => setChecking(false));
-    const expire = () => {
-      setUser(null);
-      setCsrf("");
-    };
+      .finally(() => {
+        if (active) setChecking(false);
+      });
+    const expire = () => clearSession();
     window.addEventListener("session-expired", expire);
-    return () => window.removeEventListener("session-expired", expire);
+    return () => {
+      active = false;
+      window.clearTimeout(toastTimer.current);
+      window.removeEventListener("session-expired", expire);
+    };
   }, []);
   async function refresh() {
+    const revision = sessionRevision.current;
+    const request = ++refreshRevision.current;
+    const isCurrent = () =>
+      revision === sessionRevision.current &&
+      request === refreshRevision.current;
     setLoading(true);
     setError("");
     try {
-      const [t, u, g] = await Promise.all([
-        api<Travel[]>("/travels"),
-        api<User[]>("/users"),
-        api<Gateway[]>("/payments"),
-      ]);
-      setTravels(t);
-      setUsers(u);
-      setGateways(g);
-    } catch (e) {
-      setError((e as Error).message);
+      const failures = await refreshWorkspace(
+        {
+          travels: () => api<Travel[]>("/travels"),
+          users: () => api<User[]>("/users"),
+          gateways: () => api<Gateway[]>("/payments"),
+        },
+        {
+          travels: setTravels,
+          users: (people) => {
+            setUsers(people);
+            setUser((current) => reconcileSessionUser(current, people));
+          },
+          gateways: setGateways,
+        },
+        isCurrent,
+      );
+      if (isCurrent()) setError(failures.join(" · "));
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }
   useEffect(() => {
     if (user) refresh();
-  }, [user]);
+  }, [user?.id]);
   function navigate(p: Page) {
     setPage(p);
     setSearch("");
@@ -310,26 +373,19 @@ export default function App() {
     setMenu(false);
     window.scrollTo({ top: 0, behavior: "instant" });
   }
-  const upcoming = travels
-    .filter(
-      (t) =>
-        t.status === "PUBLISHED" &&
-        t.start_date.slice(0, 10) >= new Date().toISOString().slice(0, 10),
-    )
-    .sort((a, b) => a.start_date.localeCompare(b.start_date));
-  const featured = upcoming[0] || travels[0];
   async function deleted() {
     if (!remove) return;
     setDeleting(true);
     try {
       await api("/" + remove.kind + "/" + remove.id, "DELETE");
+      if (revisionAtRender !== sessionRevision.current) return;
       setRemove(null);
       await refresh();
       notify("Record deleted");
     } catch (e) {
       notify((e as Error).message);
     } finally {
-      setDeleting(false);
+      if (revisionAtRender === sessionRevision.current) setDeleting(false);
     }
   }
   function exportPlans() {
@@ -374,11 +430,18 @@ export default function App() {
     );
   if (!user) return <Login onLogin={login} />;
   return (
-    <div className="app">
+    <div className="app" data-page={page}>
       <a href="#main" className="skip">
         Skip to content
       </a>
-      {menu && <div className="nav-scrim" onClick={() => setMenu(false)} />}
+      {menu && (
+        <button
+          type="button"
+          className="nav-scrim"
+          aria-label="Close navigation"
+          onClick={() => setMenu(false)}
+        />
+      )}
       <aside className={"sidebar " + (menu ? "open" : "")}>
         <a
           href="#overview"
@@ -388,7 +451,12 @@ export default function App() {
           <img src="/mark.svg" alt="" />
           travel<span>plan.</span>
         </a>
-        <button className="workspace-switch" onClick={() => setHelp(true)}>
+        <button
+          className="workspace-switch"
+          aria-label="Workspace guide"
+          title="Workspace guide"
+          onClick={() => setHelp(true)}
+        >
           <span className="workspace-icon">
             <Compass size={19} />
           </span>
@@ -399,10 +467,12 @@ export default function App() {
           <ChevronDown size={15} />
         </button>
         <p className="nav-label">WORKSPACE</p>
-        <nav>
+        <nav aria-label="Workspace">
           {nav.map((n) => (
             <button
               key={n.id}
+              aria-label={n.label}
+              data-label={n.label}
               className={page === n.id ? "active" : ""}
               onClick={() => navigate(n.id)}
               aria-current={page === n.id ? "page" : undefined}
@@ -416,29 +486,21 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <Leaf size={23} />
-            <h3>
-              Good journeys start
-              <br />
-              with a great plan.
-            </h3>
-            <p>Make room for what’s next.</p>
-            <button
-              onClick={() =>
-                canTravel ? setEditor({ kind: "travel" }) : navigate("travels")
-              }
-            >
-              Explore the possibilities <ArrowUpRight size={16} />
-            </button>
-          </div>
           <button
+            aria-label="Settings"
+            data-label="Settings"
             className={"side-link " + (page === "settings" ? "selected" : "")}
             onClick={() => navigate("settings")}
+            aria-current={page === "settings" ? "page" : undefined}
           >
             <Settings size={18} /> Settings
           </button>
-          <button className="side-link" onClick={() => setHelp(true)}>
+          <button
+            className="side-link"
+            aria-label="Help & getting started"
+            data-label="Help & getting started"
+            onClick={() => setHelp(true)}
+          >
             <HelpCircle size={18} /> Help & getting started
           </button>
           <button className="profile" onClick={() => navigate("settings")}>
@@ -461,15 +523,16 @@ export default function App() {
             <Menu size={22} />
           </button>
           <span className="breadcrumb">
-            Workspace <ChevronRight size={13} />{" "}
+            <span className="workspace-wordmark">
+              travelplan<i>.</i>
+            </span>
+            <span className="workspace-context">Workspace</span>
+            <ChevronRight size={13} />{" "}
             <strong>
               {nav.find((n) => n.id === page)?.label || "Settings"}
             </strong>
           </span>
           <div className="topbar-right">
-            <span className="sample-label">
-              <i /> Sample workspace
-            </span>
             <button
               className="icon-button"
               aria-label="Help"
@@ -488,833 +551,647 @@ export default function App() {
           </div>
         </header>
         <main id="main" className="content">
-          {error && (
-            <div className="error-banner" role="alert">
-              <AlertCircle size={18} />
-              {error}
-              <button onClick={refresh}>Try again</button>
-            </div>
-          )}
-          {page === "overview" && (
-            <>
-              <div className="page-heading">
-                <div>
-                  <div className="greeting">A WORLD OF POSSIBILITIES</div>
-                  <h1>
-                    Your next chapter starts here<span>.</span>
-                  </h1>
-                  <p>
-                    Great journeys, happy travellers. Everything in one place.
-                  </p>
-                </div>
-                <button
-                  className="button primary"
-                  onClick={() => setEditor({ kind: "travel" })}
-                  disabled={!canTravel}
-                >
-                  <Plus size={17} /> Create travel plan
-                </button>
+          <div className="page-surface" data-page={page} key={page}>
+            {error && (
+              <div className="error-banner" role="alert">
+                <AlertCircle size={18} />
+                {error}
+                <button onClick={refresh}>Try again</button>
               </div>
-              <div className="metrics">
-                {[
-                  {
-                    label: "Travel plans",
-                    value: travels.length,
-                    detail:
-                      travels.filter((t) => t.status === "PUBLISHED").length +
-                      " published",
-                    icon: Map,
-                  },
-                  {
-                    label: "People in your workspace",
-                    value: users.length,
-                    detail:
-                      users.filter((u) => u.status === "ACTIVE").length +
-                      " active accounts",
-                    icon: Users,
-                  },
-                  {
-                    label: "Upcoming departures",
-                    value: upcoming.length,
-                    detail: "Your published journeys",
-                    icon: Plane,
-                  },
-                  {
-                    label: "Payment methods",
-                    value: gateways.length,
-                    detail:
-                      gateways.filter((g) => g.configured).length +
-                      " connected providers",
-                    icon: CreditCard,
-                  },
-                ].map((m) => (
-                  <div className="metric" key={m.label}>
-                    <div>
-                      <span>{m.label}</span>
-                      <m.icon size={17} />
-                    </div>
-                    <strong>{m.value.toString().padStart(2, "0")}</strong>
-                    <small>{m.detail}</small>
-                  </div>
-                ))}
-              </div>
-              <div className="overview-feature">
-                {featured ? (
-                  <article className="feature-image">
-                    <img
-                      src={photo(featured.image)}
-                      alt={featured.stops
-                        .map((s) => s.destination)
-                        .join(" and ")}
-                    />
-                    <div className="feature-copy">
-                      <span className="eyebrow">ON THE HORIZON</span>
-                      <h2>{featured.title}</h2>
-                      <p>
-                        {featured.stops.map((s) => s.destination).join("  →  ")}
-                      </p>
-                      <button
-                        className="button light"
-                        onClick={() => setDetail(featured)}
-                      >
-                        Explore itinerary <ArrowUpRight size={17} />
-                      </button>
-                    </div>
-                    <div className="feature-index">
-                      <span>{featured.duration} days</span>
-                      <span>{featured.stops.length} destinations</span>
-                    </div>
-                  </article>
-                ) : (
-                  <Empty
-                    title="Your first journey awaits"
-                    text="Create a travel plan to bring this workspace to life."
-                  />
-                )}
-                <section className="departure">
-                  <div className="section-label">
-                    NEXT DEPARTURE <Plane size={17} />
-                  </div>
-                  {upcoming[0] ? (
+            )}
+            {page === "overview" && (
+              <Overview
+                travels={travels}
+                users={users}
+                gateways={gateways}
+                canTravel={canTravel}
+                onCreate={() => setEditor({ kind: "travel" })}
+                onOpen={setDetail}
+                onPlans={() => navigate("travels")}
+                onExport={exportPlans}
+              />
+            )}
+            {page === "travels" && (
+              <>
+                <PageHeading
+                  section="Travel plans"
+                  number="02"
+                  meta={`${travels.length} ${travels.length === 1 ? "journey" : "journeys"}`}
+                  title="Good plans. Great journeys."
+                  description="Create, refine, and manage every detail of your travels."
+                  action={
                     <>
-                      <div className="departure-date">
-                        <strong>
-                          {date(upcoming[0].start_date, { day: "2-digit" })}
-                        </strong>
-                        <div>
-                          {date(upcoming[0].start_date, { month: "long" })}
-                          <span>
-                            {date(upcoming[0].start_date, { year: "numeric" })}
-                          </span>
-                        </div>
-                      </div>
-                      <h3>{upcoming[0].title}</h3>
-                      <p>
-                        <MapPin size={14} />
-                        {upcoming[0].stops[0]?.country}
-                      </p>
-                      <div className="ticket-seam" />
-                      <div className="departure-details">
-                        <span>
-                          Duration<strong>{upcoming[0].duration} days</strong>
-                        </span>
-                        <span>
-                          Travellers
-                          <strong>
-                            {upcoming[0].participantIds.length} /{" "}
-                            {upcoming[0].capacity}
-                          </strong>
-                        </span>
-                      </div>
+                      <button className="button" onClick={exportPlans}>
+                        <ArrowDownToLine size={17} /> Export
+                      </button>
                       <button
-                        className="text-link"
-                        onClick={() => setDetail(upcoming[0])}
+                        className="button primary"
+                        disabled={!canTravel}
+                        onClick={() => setEditor({ kind: "travel" })}
                       >
-                        View travel details <ArrowRight size={17} />
+                        <Plus size={17} /> Create travel plan
                       </button>
                     </>
-                  ) : (
-                    <Empty
-                      title="Clear skies ahead"
-                      text="No published departures scheduled yet."
-                    />
-                  )}
-                </section>
-              </div>
-              <section className="journeys-section">
-                <div className="section-heading">
-                  <div>
-                    <h2>A few journeys in the making</h2>
-                    <p>Considered itineraries. Unforgettable places.</p>
+                  }
+                />
+                <div className="toolbar">
+                  <div className="tabs">
+                    {["ALL", "PUBLISHED", "DRAFT", "ARCHIVED"].map((s) => (
+                      <button
+                        className={filter === s ? "selected" : ""}
+                        onClick={() => setFilter(s)}
+                        key={s}
+                      >
+                        {s === "ALL" ? "All plans" : statusLabel(s)}
+                        <span>
+                          {
+                            travels.filter((t) => s === "ALL" || t.status === s)
+                              .length
+                          }
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                  <button
-                    className="text-link"
-                    onClick={() => navigate("travels")}
-                  >
-                    View all plans <ArrowRight size={17} />
-                  </button>
-                </div>
-                <div className="journey-grid">
-                  {travels.slice(0, 3).map((t) => (
-                    <TravelCard
-                      key={t.id}
-                      travel={t}
-                      open={() => setDetail(t)}
+                  <label className="search">
+                    <Search size={17} />
+                    <input
+                      aria-label="Search travel plans"
+                      placeholder="Search destinations, plans…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
                     />
-                  ))}
+                  </label>
                 </div>
-              </section>
-              <section className="workspace-strip">
-                <div className="strip-icon">
-                  <ShieldCheck size={24} />
+                <div className="travel-list">
+                  {travels
+                    .filter(
+                      (t) =>
+                        (filter === "ALL" || filter === t.status) &&
+                        matchesTravel(t, search),
+                    )
+                    .map((t) => (
+                      <article className="travel-row" key={t.id}>
+                        <button
+                          className="row-photo"
+                          onClick={() => setDetail(t)}
+                          aria-label={"View " + t.title}
+                        >
+                          <img
+                            src={photo(t.image)}
+                            alt={t.stops[0]?.destination}
+                          />
+                        </button>
+                        <div className="travel-row-main">
+                          <Badge value={t.status} />
+                          <button
+                            className="title-button"
+                            onClick={() => setDetail(t)}
+                          >
+                            <h3>{t.title}</h3>
+                          </button>
+                          <p>
+                            <MapPin size={14} />
+                            {t.stops.map((s) => s.destination).join(" → ")}
+                          </p>
+                          <div className="travel-meta">
+                            <span>
+                              <CalendarDays size={14} />
+                              {date(t.start_date)} – {date(t.end_date)}
+                            </span>
+                            <span>
+                              <Clock size={14} />
+                              {t.duration} days
+                            </span>
+                            <span>
+                              <Users size={14} />
+                              {t.participantIds.length}/{t.capacity}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="travel-row-end">
+                          <div>
+                            <strong>{money(t.price)}</strong>
+                            <small>per person · USD</small>
+                          </div>
+                          <div className="row-actions">
+                            <button
+                              className="icon-button"
+                              aria-label={"Edit " + t.title}
+                              disabled={!canTravel}
+                              onClick={() =>
+                                setEditor({ kind: "travel", item: t })
+                              }
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              className="icon-button danger"
+                              aria-label={"Delete " + t.title}
+                              disabled={!canTravel}
+                              onClick={() =>
+                                setRemove({
+                                  kind: "travels",
+                                  id: t.id,
+                                  name: t.title,
+                                })
+                              }
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                            <button
+                              className="icon-button"
+                              aria-label={"View " + t.title}
+                              onClick={() => setDetail(t)}
+                            >
+                              <ArrowUpRight size={19} />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                 </div>
-                <div>
-                  <h3>A well-kept workspace</h3>
-                  <p>Manage your people and payment methods with care.</p>
-                </div>
-                <button className="text-link" onClick={() => navigate("users")}>
-                  Manage people <ArrowUpRight size={17} />
-                </button>
-              </section>
-            </>
-          )}
-          {page === "travels" && (
-            <>
-              <PageHeading
-                title="Good plans. Great journeys."
-                description="Create, refine, and manage every detail of your travels."
-                action={
-                  <>
-                    <button className="button" onClick={exportPlans}>
-                      <ArrowDownToLine size={17} /> Export
-                    </button>
-                    <button
-                      className="button primary"
-                      disabled={!canTravel}
-                      onClick={() => setEditor({ kind: "travel" })}
-                    >
-                      <Plus size={17} /> Create travel plan
-                    </button>
-                  </>
-                }
-              />
-              <div className="toolbar">
-                <div className="tabs">
-                  {["ALL", "PUBLISHED", "DRAFT", "ARCHIVED"].map((s) => (
-                    <button
-                      className={filter === s ? "selected" : ""}
-                      onClick={() => setFilter(s)}
-                      key={s}
-                    >
-                      {s === "ALL" ? "All plans" : statusLabel(s)}
-                      <span>
-                        {
-                          travels.filter((t) => s === "ALL" || t.status === s)
-                            .length
-                        }
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <label className="search">
-                  <Search size={17} />
-                  <input
-                    aria-label="Search travel plans"
-                    placeholder="Search destinations, plans…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className="travel-list">
-                {travels
-                  .filter(
+                {!loading &&
+                  !travels.some(
                     (t) =>
                       (filter === "ALL" || filter === t.status) &&
                       matchesTravel(t, search),
-                  )
-                  .map((t) => (
-                    <article className="travel-row" key={t.id}>
-                      <button
-                        className="row-photo"
-                        onClick={() => setDetail(t)}
-                        aria-label={"View " + t.title}
+                  ) && (
+                    <Empty
+                      title="No journeys found"
+                      text="Try another search or create a new travel plan."
+                    />
+                  )}
+              </>
+            )}
+            {page === "users" && (
+              <>
+                <PageHeading
+                  section="People"
+                  number="03"
+                  meta={`${users.length} ${users.length === 1 ? "person" : "people"}`}
+                  title="People make the journey."
+                  description="The right access, for everyone in your workspace."
+                  action={
+                    <button
+                      className="button primary"
+                      disabled={!admin}
+                      onClick={() => setEditor({ kind: "user" })}
+                    >
+                      <Plus size={17} /> Add person
+                    </button>
+                  }
+                />
+                <div className="toolbar">
+                  <span className="result-count">
+                    {users.length} {users.length === 1 ? "person" : "people"} in
+                    your workspace
+                  </span>
+                  <label className="search">
+                    <Search size={17} />
+                    <input
+                      placeholder="Search people…"
+                      aria-label="Search people"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Person</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users
+                        .filter((u) =>
+                          (u.name + " " + u.email)
+                            .toLowerCase()
+                            .includes(search.toLowerCase()),
+                        )
+                        .map((u) => (
+                          <tr key={u.id}>
+                            <td>
+                              <div className="person">
+                                <span className="avatar">
+                                  {initials(u.name)}
+                                </span>
+                                <span>
+                                  <strong>
+                                    {u.name}
+                                    {u.id === user.id && (
+                                      <small className="you-label">You</small>
+                                    )}
+                                  </strong>
+                                  <small>{u.email}</small>
+                                </span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="role-label">
+                                <ShieldCheck size={14} />
+                                {statusLabel(u.role)}
+                              </span>
+                            </td>
+                            <td>
+                              <Badge value={u.status} />
+                            </td>
+                            <td>{date(u.created_at)}</td>
+                            <td>
+                              <div className="row-actions">
+                                <button
+                                  className="icon-button"
+                                  aria-label={"Edit " + u.name}
+                                  disabled={!admin}
+                                  onClick={() =>
+                                    setEditor({ kind: "user", item: u })
+                                  }
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  className="icon-button danger"
+                                  aria-label={"Delete " + u.name}
+                                  disabled={!admin || u.id === user.id}
+                                  onClick={() =>
+                                    setRemove({
+                                      kind: "users",
+                                      id: u.id,
+                                      name: u.name,
+                                    })
+                                  }
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="hint">
+                  <ShieldCheck size={18} />
+                  <p>
+                    Admins manage the workspace. Travel managers curate
+                    journeys. Viewers have read access.
+                  </p>
+                </div>
+              </>
+            )}
+            {page === "payments" && (
+              <>
+                <PageHeading
+                  section="Payments"
+                  number="04"
+                  meta={`${gateways.length} payment ${gateways.length === 1 ? "method" : "methods"}`}
+                  title="A smooth way to pay."
+                  description="Manage the payment methods available to your travellers."
+                  action={
+                    <button
+                      className="button primary"
+                      disabled={!admin}
+                      onClick={() => setEditor({ kind: "gateway" })}
+                    >
+                      <Plus size={17} /> Add payment method
+                    </button>
+                  }
+                />
+                <div className="payment-intro">
+                  <ShieldCheck size={22} />
+                  <div>
+                    <strong>Your workspace is in sandbox mode</strong>
+                    <p>
+                      Connect test credentials to verify providers. No real
+                      payments are collected.
+                    </p>
+                  </div>
+                  <span className="badge draft">Sandbox</span>
+                </div>
+                <div className="payment-list">
+                  {gateways.map((g) => (
+                    <article className="payment-card" key={g.id}>
+                      <div
+                        className={"provider-logo " + g.provider.toLowerCase()}
                       >
-                        <img
-                          src={photo(t.image)}
-                          alt={t.stops[0]?.destination}
-                        />
-                      </button>
-                      <div className="travel-row-main">
-                        <Badge value={t.status} />
-                        <button
-                          className="title-button"
-                          onClick={() => setDetail(t)}
-                        >
-                          <h3>{t.title}</h3>
-                        </button>
+                        {g.provider === "STRIPE" ? "stripe" : "PayPal"}
+                      </div>
+                      <div className="payment-info">
+                        <h2>{g.name}</h2>
                         <p>
-                          <MapPin size={14} />
-                          {t.stops.map((s) => s.destination).join(" → ")}
+                          {g.provider === "STRIPE"
+                            ? "Cards and digital wallets"
+                            : "PayPal accounts and checkout"}
                         </p>
-                        <div className="travel-meta">
-                          <span>
-                            <CalendarDays size={14} />
-                            {date(t.start_date)} – {date(t.end_date)}
-                          </span>
-                          <span>
-                            <Clock size={14} />
-                            {t.duration} days
-                          </span>
-                          <span>
-                            <Users size={14} />
-                            {t.participantIds.length}/{t.capacity}
-                          </span>
+                        <div className="provider-meta">
+                          <span>{g.currency}</span>
+                          <span>{g.enabled ? "Enabled" : "Disabled"}</span>
+                          <span>{g.mode.toLowerCase()}</span>
                         </div>
                       </div>
-                      <div className="travel-row-end">
-                        <div>
-                          <strong>{money(t.price)}</strong>
-                          <small>per person · USD</small>
-                        </div>
+                      <div className="payment-controls">
+                        <Badge
+                          value={g.configured ? "CONFIGURED" : "NOT_CONFIGURED"}
+                        />
                         <div className="row-actions">
                           <button
+                            className="button small-button"
+                            disabled={!admin}
+                            onClick={async () => {
+                              try {
+                                const result = await api<{ message: string }>(
+                                  "/payments/" + g.id + "/test",
+                                  "POST",
+                                );
+                                notify(result.message);
+                              } catch (e) {
+                                notify((e as Error).message);
+                              }
+                            }}
+                          >
+                            Test connection <ArrowUpRight size={15} />
+                          </button>
+                          <button
                             className="icon-button"
-                            aria-label={"Edit " + t.title}
-                            disabled={!canTravel}
+                            aria-label={"Edit " + g.name}
+                            disabled={!admin}
                             onClick={() =>
-                              setEditor({ kind: "travel", item: t })
+                              setEditor({ kind: "gateway", item: g })
                             }
                           >
                             <Pencil size={16} />
                           </button>
                           <button
                             className="icon-button danger"
-                            aria-label={"Delete " + t.title}
-                            disabled={!canTravel}
+                            aria-label={"Delete " + g.name}
+                            disabled={!admin}
                             onClick={() =>
                               setRemove({
-                                kind: "travels",
-                                id: t.id,
-                                name: t.title,
+                                kind: "payments",
+                                id: g.id,
+                                name: g.name,
                               })
                             }
                           >
                             <Trash2 size={16} />
                           </button>
-                          <button
-                            className="icon-button"
-                            aria-label={"View " + t.title}
-                            onClick={() => setDetail(t)}
-                          >
-                            <ArrowUpRight size={19} />
-                          </button>
                         </div>
                       </div>
                     </article>
                   ))}
-              </div>
-              {!loading &&
-                !travels.some(
-                  (t) =>
-                    (filter === "ALL" || filter === t.status) &&
-                    matchesTravel(t, search),
-                ) && (
-                  <Empty
-                    title="No journeys found"
-                    text="Try another search or create a new travel plan."
-                  />
-                )}
-            </>
-          )}
-          {page === "users" && (
-            <>
-              <PageHeading
-                title="People make the journey."
-                description="The right access, for everyone in your workspace."
-                action={
-                  <button
-                    className="button primary"
-                    disabled={!admin}
-                    onClick={() => setEditor({ kind: "user" })}
-                  >
-                    <Plus size={17} /> Add person
-                  </button>
-                }
-              />
-              <div className="toolbar">
-                <span className="result-count">
-                  {users.length} people in your workspace
-                </span>
-                <label className="search">
-                  <Search size={17} />
-                  <input
-                    placeholder="Search people…"
-                    aria-label="Search people"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Joined</th>
-                      <th>
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users
-                      .filter((u) =>
-                        (u.name + " " + u.email)
-                          .toLowerCase()
-                          .includes(search.toLowerCase()),
-                      )
-                      .map((u) => (
-                        <tr key={u.id}>
-                          <td>
-                            <div className="person">
-                              <span className="avatar">{initials(u.name)}</span>
-                              <span>
-                                <strong>
-                                  {u.name}
-                                  {u.id === user.id && (
-                                    <small className="you-label">You</small>
-                                  )}
-                                </strong>
-                                <small>{u.email}</small>
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="role-label">
-                              <ShieldCheck size={14} />
-                              {statusLabel(u.role)}
-                            </span>
-                          </td>
-                          <td>
-                            <Badge value={u.status} />
-                          </td>
-                          <td>{date(u.created_at)}</td>
-                          <td>
-                            <div className="row-actions">
-                              <button
-                                className="icon-button"
-                                aria-label={"Edit " + u.name}
-                                disabled={!admin}
-                                onClick={() =>
-                                  setEditor({ kind: "user", item: u })
-                                }
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                className="icon-button danger"
-                                aria-label={"Delete " + u.name}
-                                disabled={!admin || u.id === user.id}
-                                onClick={() =>
-                                  setRemove({
-                                    kind: "users",
-                                    id: u.id,
-                                    name: u.name,
-                                  })
-                                }
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="hint">
-                <ShieldCheck size={18} />
-                <p>
-                  Admins manage the workspace. Travel managers curate journeys.
-                  Viewers have read access.
-                </p>
-              </div>
-            </>
-          )}
-          {page === "payments" && (
-            <>
-              <PageHeading
-                title="A smooth way to pay."
-                description="Manage the payment methods available to your travellers."
-                action={
-                  <button
-                    className="button primary"
-                    disabled={!admin}
-                    onClick={() => setEditor({ kind: "gateway" })}
-                  >
-                    <Plus size={17} /> Add payment method
-                  </button>
-                }
-              />
-              <div className="payment-intro">
-                <ShieldCheck size={22} />
-                <div>
-                  <strong>Your workspace is in sandbox mode</strong>
+                </div>
+                <div className="hint">
+                  <HelpCircle size={18} />
                   <p>
-                    Connect test credentials to verify providers. No real
-                    payments are collected.
+                    Provider credentials are managed securely by your deployment
+                    administrator. Configured means credentials are present; use
+                    Test connection to verify them with the provider.
                   </p>
                 </div>
-                <span className="badge draft">Sandbox</span>
-              </div>
-              <div className="payment-list">
-                {gateways.map((g) => (
-                  <article className="payment-card" key={g.id}>
-                    <div
-                      className={"provider-logo " + g.provider.toLowerCase()}
+              </>
+            )}
+            {page === "calendar" && (
+              <>
+                <PageHeading
+                  section="Calendar"
+                  number="05"
+                  meta={calendarDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                  title="Make time for somewhere new."
+                  description="Your upcoming journeys, with a little perspective."
+                  action={
+                    <button
+                      className="button"
+                      onClick={() => {
+                        setCalendarDate(new Date());
+                        setActiveDay(null);
+                      }}
                     >
-                      {g.provider === "STRIPE" ? "stripe" : "PayPal"}
-                    </div>
-                    <div className="payment-info">
-                      <h2>{g.name}</h2>
-                      <p>
-                        {g.provider === "STRIPE"
-                          ? "Cards and digital wallets"
-                          : "PayPal accounts and checkout"}
-                      </p>
-                      <div className="provider-meta">
-                        <span>{g.currency}</span>
-                        <span>{g.enabled ? "Enabled" : "Disabled"}</span>
-                        <span>{g.mode.toLowerCase()}</span>
-                      </div>
-                    </div>
-                    <div className="payment-controls">
-                      <Badge
-                        value={g.configured ? "CONNECTED" : "NOT_CONNECTED"}
-                      />
+                      Today
+                    </button>
+                  }
+                />
+                <div className="calendar-layout">
+                  <section className="calendar">
+                    <div className="calendar-heading">
+                      <h2>
+                        {calendarDate.toLocaleDateString("en-US", {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </h2>
                       <div className="row-actions">
                         <button
-                          className="button small-button"
-                          disabled={!admin}
-                          onClick={async () => {
-                            try {
-                              const result = await api<{ message: string }>(
-                                "/payments/" + g.id + "/test",
-                                "POST",
-                              );
-                              notify(result.message);
-                            } catch (e) {
-                              notify((e as Error).message);
-                            }
+                          className="icon-button"
+                          aria-label="Previous month"
+                          onClick={() => {
+                            setCalendarDate(
+                              moveCalendarMonth(calendarDate, -1),
+                            );
+                            setActiveDay(null);
                           }}
                         >
-                          Test connection <ArrowUpRight size={15} />
+                          <ChevronLeft size={20} />
                         </button>
                         <button
                           className="icon-button"
-                          aria-label={"Edit " + g.name}
-                          disabled={!admin}
-                          onClick={() =>
-                            setEditor({ kind: "gateway", item: g })
-                          }
+                          aria-label="Next month"
+                          onClick={() => {
+                            setCalendarDate(moveCalendarMonth(calendarDate, 1));
+                            setActiveDay(null);
+                          }}
                         >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          className="icon-button danger"
-                          aria-label={"Delete " + g.name}
-                          disabled={!admin}
-                          onClick={() =>
-                            setRemove({
-                              kind: "payments",
-                              id: g.id,
-                              name: g.name,
-                            })
-                          }
-                        >
-                          <Trash2 size={16} />
+                          <ChevronRight size={20} />
                         </button>
                       </div>
                     </div>
-                  </article>
-                ))}
-              </div>
-              <div className="hint">
-                <HelpCircle size={18} />
-                <p>
-                  Provider credentials are managed securely by your deployment
-                  administrator. Connection status reflects whether sandbox
-                  credentials are configured.
-                </p>
-              </div>
-            </>
-          )}
-          {page === "calendar" && (
-            <>
-              <PageHeading
-                title="Make time for somewhere new."
-                description="Your upcoming journeys, with a little perspective."
-                action={
-                  <button
-                    className="button"
-                    onClick={() => {
-                      setCalendarDate(new Date());
-                      setActiveDay(null);
-                    }}
-                  >
-                    Today
-                  </button>
-                }
-              />
-              <div className="calendar-layout">
-                <section className="calendar">
-                  <div className="calendar-heading">
-                    <h2>
-                      {calendarDate.toLocaleDateString("en-US", {
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </h2>
-                    <div className="row-actions">
-                      <button
-                        className="icon-button"
-                        aria-label="Previous month"
-                        onClick={() => {
-                          setCalendarDate(
-                            new Date(
-                              calendarDate.getFullYear(),
-                              calendarDate.getMonth() - 1,
-                              1,
-                            ),
-                          );
-                          setActiveDay(null);
-                        }}
-                      >
-                        <ChevronLeft size={20} />
-                      </button>
-                      <button
-                        className="icon-button"
-                        aria-label="Next month"
-                        onClick={() => {
-                          setCalendarDate(
-                            new Date(
-                              calendarDate.getFullYear(),
-                              calendarDate.getMonth() + 1,
-                              1,
-                            ),
-                          );
-                          setActiveDay(null);
-                        }}
-                      >
-                        <ChevronRight size={20} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="calendar-grid">
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                      (d) => (
-                        <span className="weekday" key={d}>
-                          {d}
-                        </span>
-                      ),
-                    )}
-                    {Array.from(
-                      {
-                        length: new Date(
-                          calendarDate.getFullYear(),
-                          calendarDate.getMonth(),
-                          1,
-                        ).getDay(),
-                      },
-                      (_, i) => (
-                        <div className="day blank" key={"blank" + i} />
-                      ),
-                    )}
-                    {Array.from(
-                      {
-                        length: new Date(
-                          calendarDate.getFullYear(),
-                          calendarDate.getMonth() + 1,
-                          0,
-                        ).getDate(),
-                      },
-                      (_, i) => {
-                        const day = i + 1;
-                        const iso = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                        const trips = travels.filter(
-                          (t) =>
-                            t.start_date.slice(0, 10) <= iso &&
-                            t.end_date.slice(0, 10) >= iso &&
-                            t.status !== "ARCHIVED",
-                        );
-                        return (
-                          <button
-                            key={day}
-                            className={
-                              "day " + (activeDay === day ? "selected" : "")
-                            }
-                            onClick={() => setActiveDay(day)}
-                            aria-label={`${iso}, ${trips.length} travel plans`}
-                          >
-                            <span>{day}</span>
-                            {trips.slice(0, 2).map((t) => (
-                              <small key={t.id}>
-                                {t.stops[0]?.destination}
-                              </small>
-                            ))}
-                            {trips.length > 2 && (
-                              <small>+{trips.length - 2} more</small>
-                            )}
-                          </button>
-                        );
-                      },
-                    )}
-                  </div>
-                </section>
-                <section className="calendar-agenda">
-                  <span className="eyebrow">
-                    {activeDay ? "SELECTED DAY" : "ON THE CALENDAR"}
-                  </span>
-                  <h2>
-                    {activeDay
-                      ? date(
-                          `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}-${String(activeDay).padStart(2, "0")}`,
-                          { month: "long", day: "numeric" },
-                        )
-                      : "Journeys this month"}
-                  </h2>
-                  {travels
-                    .filter((t) => {
-                      const start = new Date(
-                        calendarDate.getFullYear(),
-                        calendarDate.getMonth(),
-                        activeDay || 1,
-                        12,
-                      )
-                        .toISOString()
-                        .slice(0, 10);
-                      const end = activeDay
-                        ? start
-                        : new Date(
+                    <div className="calendar-grid">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (d) => (
+                          <span className="weekday" key={d}>
+                            {d}
+                          </span>
+                        ),
+                      )}
+                      {Array.from(
+                        {
+                          length: new Date(
+                            calendarDate.getFullYear(),
+                            calendarDate.getMonth(),
+                            1,
+                          ).getDay(),
+                        },
+                        (_, i) => (
+                          <div className="day blank" key={"blank" + i} />
+                        ),
+                      )}
+                      {Array.from(
+                        {
+                          length: new Date(
                             calendarDate.getFullYear(),
                             calendarDate.getMonth() + 1,
                             0,
-                            12,
-                          )
-                            .toISOString()
-                            .slice(0, 10);
-                      return (
-                        t.start_date <= end &&
-                        t.end_date >= start &&
-                        t.status !== "ARCHIVED"
-                      );
-                    })
-                    .map((t) => (
-                      <button
-                        className="agenda-item"
-                        key={t.id}
-                        onClick={() => setDetail(t)}
-                      >
-                        <img src={photo(t.image)} alt="" />
-                        <span>
-                          <strong>{t.title}</strong>
-                          <small>
-                            {date(t.start_date)} – {date(t.end_date)}
-                          </small>
-                        </span>
-                        <ArrowUpRight size={16} />
-                      </button>
-                    ))}
-                  <p className="agenda-note">
-                    Select a day to see the journeys taking place.
-                  </p>
+                          ).getDate(),
+                        },
+                        (_, i) => {
+                          const day = i + 1;
+                          const iso = calendarDateKey(calendarDate, day);
+                          const trips = travelsInPeriod(travels, iso);
+                          return (
+                            <button
+                              key={day}
+                              className={
+                                "day " + (activeDay === day ? "selected" : "")
+                              }
+                              onClick={() => setActiveDay(day)}
+                              aria-label={`${iso}, ${trips.length} travel plans`}
+                            >
+                              <span>{day}</span>
+                              {trips.slice(0, 2).map((t) => (
+                                <small key={t.id}>
+                                  {t.stops[0]?.destination}
+                                </small>
+                              ))}
+                              {trips.length > 2 && (
+                                <small>+{trips.length - 2} more</small>
+                              )}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+                  </section>
+                  <section className="calendar-agenda">
+                    <span className="eyebrow">
+                      {activeDay ? "SELECTED DAY" : "ON THE CALENDAR"}
+                    </span>
+                    <h2>
+                      {activeDay
+                        ? date(calendarDateKey(calendarDate, activeDay), {
+                            month: "long",
+                            day: "numeric",
+                          })
+                        : "Journeys this month"}
+                    </h2>
+                    {calendarAgenda(travels, calendarDate, activeDay).map(
+                      (t) => (
+                        <button
+                          className="agenda-item"
+                          key={t.id}
+                          onClick={() => setDetail(t)}
+                        >
+                          <img src={photo(t.image)} alt="" />
+                          <span>
+                            <strong>{t.title}</strong>
+                            <small>
+                              {date(t.start_date)} – {date(t.end_date)}
+                            </small>
+                          </span>
+                          <ArrowUpRight size={16} />
+                        </button>
+                      ),
+                    )}
+                    <p className="agenda-note">
+                      Select a day to see the journeys taking place.
+                    </p>
+                  </section>
+                </div>
+              </>
+            )}
+            {page === "settings" && (
+              <>
+                <PageHeading
+                  section="Settings"
+                  number="06"
+                  meta={statusLabel(user.role)}
+                  title="Your workspace, your way."
+                  description="Account information and access preferences."
+                />
+                <section className="settings-profile">
+                  <span className="avatar large">{initials(user.name)}</span>
+                  <div>
+                    <h2>{user.name}</h2>
+                    <p>{user.email}</p>
+                    <Badge value={user.role} />
+                  </div>
                 </section>
-              </div>
-            </>
-          )}
-          {page === "settings" && (
-            <>
-              <PageHeading
-                title="Your workspace, your way."
-                description="Account information and access preferences."
-              />
-              <section className="settings-profile">
-                <span className="avatar large">{initials(user.name)}</span>
-                <div>
-                  <h2>{user.name}</h2>
-                  <p>{user.email}</p>
-                  <Badge value={user.role} />
+                <div className="settings-row">
+                  <div>
+                    <h3>Account details</h3>
+                    <p>
+                      {admin
+                        ? "Update your name, email, or password."
+                        : "Contact a workspace administrator to update your details."}
+                    </p>
+                  </div>
+                  <button
+                    className="button"
+                    disabled={!admin}
+                    onClick={() => {
+                      const current = users.find((u) => u.id === user.id);
+                      if (current) setEditor({ kind: "user", item: current });
+                    }}
+                  >
+                    Edit account <Pencil size={16} />
+                  </button>
                 </div>
-              </section>
-              <div className="settings-row">
-                <div>
-                  <h3>Account details</h3>
-                  <p>
-                    {admin
-                      ? "Update your name, email, or password."
-                      : "Contact a workspace administrator to update your details."}
-                  </p>
+                <div className="settings-row">
+                  <div>
+                    <h3>Session</h3>
+                    <p>
+                      Signing out ends this session immediately on all services.
+                    </p>
+                  </div>
+                  <button
+                    className="button"
+                    onClick={async () => {
+                      try {
+                        await api("/auth/logout", "POST");
+                        if (revisionAtRender === sessionRevision.current)
+                          clearSession();
+                      } catch (e) {
+                        notify((e as Error).message);
+                      }
+                    }}
+                  >
+                    Sign out <LogOut size={16} />
+                  </button>
                 </div>
-                <button
-                  className="button"
-                  disabled={!admin}
-                  onClick={() => {
-                    const current = users.find((u) => u.id === user.id);
-                    if (current) setEditor({ kind: "user", item: current });
-                  }}
-                >
-                  Edit account <Pencil size={16} />
-                </button>
-              </div>
-              <div className="settings-row">
-                <div>
-                  <h3>Session</h3>
-                  <p>
-                    Signing out ends this session immediately on all services.
-                  </p>
+                <div className="settings-row">
+                  <div>
+                    <h3>About this workspace</h3>
+                    <p>
+                      Sample itineraries for exploring Travel Plan. Payments use
+                      test mode.
+                    </p>
+                  </div>
+                  <span className="version-label">Travel Plan · 1.0</span>
                 </div>
-                <button
-                  className="button"
-                  onClick={async () => {
-                    try {
-                      await api("/auth/logout", "POST");
-                      setUser(null);
-                      setCsrf("");
-                    } catch (e) {
-                      notify((e as Error).message);
-                    }
-                  }}
-                >
-                  Sign out <LogOut size={16} />
-                </button>
+              </>
+            )}
+            {loading && (
+              <div className="loading-inline" role="status">
+                <LoaderCircle className="spin" size={18} /> Updating your
+                workspace…
               </div>
-              <div className="settings-row">
-                <div>
-                  <h3>About this workspace</h3>
-                  <p>
-                    Sample itineraries for exploring Travel Plan. Payments use
-                    test mode.
-                  </p>
-                </div>
-                <span className="version-label">Travel Plan · 1.0</span>
-              </div>
-            </>
-          )}
-          {loading && (
-            <div className="loading-inline" role="status">
-              <LoaderCircle className="spin" size={18} /> Updating your
-              workspace…
-            </div>
-          )}
-          <footer className="footer">
-            <span>Thoughtfully planned. Beautifully travelled.</span>
-            <span>
-              Travel Plan <span className="footer-dot">•</span> Admin workspace
-            </span>
-          </footer>
+            )}
+            <footer className="footer">
+              <span>Good plans take you places.</span>
+              <span>
+                Travel Plan <span className="footer-dot">•</span> Admin
+                workspace
+              </span>
+            </footer>
+          </div>
         </main>
       </div>
       {editor && (
@@ -1323,6 +1200,7 @@ export default function App() {
           users={users}
           onClose={() => setEditor(null)}
           onSaved={async () => {
+            if (revisionAtRender !== sessionRevision.current) return;
             setEditor(null);
             await refresh();
             notify("Changes saved");
@@ -1416,57 +1294,80 @@ export default function App() {
   );
 }
 function PageHeading({
+  section,
+  number,
+  meta,
   title,
   description,
   action,
 }: {
+  section: string;
+  number: string;
+  meta: string;
   title: string;
   description: string;
   action?: ReactNode;
 }) {
   return (
     <div className="page-heading subpage-heading">
-      <div>
+      <div className="page-heading-copy">
+        <div className="shared-page-kicker">
+          <span className="page-kicker-number" aria-hidden="true">
+            {number} /
+          </span>
+          <span>{section}</span>
+          <span className="page-kicker-meta">{meta}</span>
+        </div>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
       <div className="heading-actions">{action}</div>
+      <svg
+        className="page-heading-art"
+        viewBox="0 0 240 160"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path d="M16 80h208M120 12v136" stroke="currentColor" opacity=".3" />
+        <circle cx="120" cy="80" r="57" stroke="currentColor" opacity=".45" />
+        <ellipse
+          cx="120"
+          cy="80"
+          rx="27"
+          ry="57"
+          stroke="currentColor"
+          opacity=".3"
+        />
+        <ellipse
+          cx="120"
+          cy="80"
+          rx="57"
+          ry="19"
+          stroke="currentColor"
+          opacity=".3"
+        />
+        <g className="page-heading-orbit">
+          <ellipse
+            cx="120"
+            cy="80"
+            rx="98"
+            ry="34"
+            transform="rotate(-28 120 80)"
+            stroke="currentColor"
+            opacity=".75"
+          />
+          <circle cx="206.53" cy="33.99" r="4" fill="currentColor" />
+        </g>
+        <circle cx="120" cy="80" r="3" fill="currentColor" />
+        <path
+          d="M16 75v10M224 75v10M115 12h10M115 148h10"
+          stroke="currentColor"
+        />
+      </svg>
     </div>
   );
 }
-function TravelCard({ travel: t, open }: { travel: Travel; open: () => void }) {
-  return (
-    <article className="journey-card">
-      <button
-        className="journey-photo"
-        onClick={open}
-        aria-label={"View " + t.title}
-      >
-        <img src={photo(t.image)} alt={t.stops[0]?.destination} />
-        <span className="photo-arrow">
-          <ArrowUpRight size={21} />
-        </span>
-      </button>
-      <div className="journey-card-meta">
-        <span>{t.stops[0]?.country}</span>
-        <Badge value={t.status} />
-      </div>
-      <button className="title-button" onClick={open}>
-        <h3>{t.title}</h3>
-      </button>
-      <div className="journey-card-bottom">
-        <span>
-          <CalendarDays size={14} />
-          {date(t.start_date)} · {t.duration} days
-        </span>
-        <strong>
-          {money(t.price)}
-          <small> / person</small>
-        </strong>
-      </div>
-    </article>
-  );
-}
+
 function TravelDetail({
   travel: t,
   onClose,
@@ -1619,26 +1520,19 @@ function EditorModal({
     setBusy(true);
     setError("");
     const data = Object.fromEntries(new FormData(e.currentTarget));
-    let body: unknown;
-    let path: string;
-    if (editor.kind === "travel") {
-      path = "/travels";
-      body = {
-        ...data,
-        price: Number(data.price),
-        capacity: Number(data.capacity),
-        stops,
-        participantIds: participants,
-        version: travel?.version || 0,
-      };
-    } else if (editor.kind === "user") {
-      path = "/users";
-      body = data;
-    } else {
-      path = "/payments";
-      body = { ...data, enabled: data.enabled === "on" };
-    }
     try {
+      const path =
+        editor.kind === "travel"
+          ? "/travels"
+          : editor.kind === "user"
+            ? "/users"
+            : "/payments";
+      const body =
+        editor.kind === "travel"
+          ? travelPayload(data, stops, participants, travel?.version ?? 0)
+          : editor.kind === "user"
+            ? userPayload(data, !item)
+            : gatewayPayload(data);
       await api(
         path + (item ? "/" + item.id : ""),
         item ? "PUT" : "POST",
@@ -1894,12 +1788,12 @@ function EditorModal({
                 type="password"
                 autoComplete="new-password"
                 minLength={12}
-                maxLength={128}
+                maxLength={72}
                 required={!item}
               />
             </label>
             <p className="form-hint">
-              Use at least 12 characters.
+              Use at least 12 characters, up to 72 UTF-8 bytes.
               {item
                 ? " Leave blank to keep the existing password. Changing it ends their active sessions."
                 : ""}
@@ -1966,7 +1860,7 @@ function EditorModal({
           <button className="button" type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="button primary" disabled={busy}>
+          <button type="submit" className="button primary" disabled={busy}>
             {busy ? (
               <LoaderCircle className="spin" size={17} />
             ) : (

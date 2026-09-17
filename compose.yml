@@ -18,7 +18,7 @@ services:
       - ./infra/postgres/002-sample.sql:/docker-entrypoint-initdb.d/002-sample.sql:ro
     healthcheck:
       {
-        test: ["CMD-SHELL", "pg_isready -U postgres -d travelplan"],
+        test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d travelplan"],
         interval: 5s,
         timeout: 3s,
         retries: 30,
@@ -41,10 +41,18 @@ services:
       NEO4J_dbms_ssl_policy_bolt_client__auth: NONE
       NEO4J_server_http_enabled: "false"
     volumes: [neo-data:/data, ./.secrets/certs/neo4j:/certificates:ro]
+    healthcheck:
+      test: ["CMD", "bash", "-c", ": > /dev/tcp/127.0.0.1/7687"]
+      interval: 10s
+      timeout: 3s
+      start_period: 90s
+      retries: 12
     networks: [backend]
     restart: unless-stopped
   vault:
-    mem_limit: 192m
+    # A fresh Linux image can exceed 192 MB during Vault initialization.
+    mem_limit: 512m
+    environment: { GOMEMLIMIT: 384MiB, GOMAXPROCS: "2" }
     image: hashicorp/vault:1.20
     command: server
     ports: ["127.0.0.1:18200:8200"]
@@ -59,6 +67,7 @@ services:
     restart: unless-stopped
   identity-agent:
     image: hashicorp/vault:1.20
+    environment: { GOMEMLIMIT: 192MiB, GOMAXPROCS: "2" }
     user: "0"
     entrypoint: ["sh", "/config/agent-entrypoint.sh"]
     command: agent -config=/config/identity-agent.hcl
@@ -69,7 +78,7 @@ services:
         timeout: 3s,
         retries: 30,
       }
-    mem_limit: 96m
+    mem_limit: 512m
     volumes:
       [
         ./infra/vault:/config:ro,
@@ -82,6 +91,7 @@ services:
     restart: unless-stopped
   travel-agent:
     image: hashicorp/vault:1.20
+    environment: { GOMEMLIMIT: 192MiB, GOMAXPROCS: "2" }
     user: "0"
     entrypoint: ["sh", "/config/agent-entrypoint.sh"]
     command: agent -config=/config/travel-agent.hcl
@@ -92,7 +102,7 @@ services:
         timeout: 3s,
         retries: 30,
       }
-    mem_limit: 96m
+    mem_limit: 512m
     volumes:
       [
         ./infra/vault:/config:ro,
@@ -105,6 +115,7 @@ services:
     restart: unless-stopped
   payments-agent:
     image: hashicorp/vault:1.20
+    environment: { GOMEMLIMIT: 192MiB, GOMAXPROCS: "2" }
     user: "0"
     entrypoint: ["sh", "/config/agent-entrypoint.sh"]
     command: agent -config=/config/payments-agent.hcl
@@ -115,7 +126,7 @@ services:
         timeout: 3s,
         retries: 30,
       }
-    mem_limit: 96m
+    mem_limit: 512m
     volumes:
       [
         ./infra/vault:/config:ro,
@@ -155,7 +166,11 @@ services:
       }
     image: travel-plan-travel:1.0.0
     environment:
-      { TLS_PASSWORD: "${TLS_PASSWORD}", APP_ORIGIN: "https://localhost:8443" }
+      {
+        TLS_PASSWORD: "${TLS_PASSWORD}",
+        APP_ORIGIN: "https://localhost:8443",
+        APP_AUTH_URL: "https://dashboard:9444",
+      }
     volumes: [travel-runtime:/run/secrets:ro, ./.secrets/certs/travel:/certs:ro]
     depends_on:
       {
@@ -174,7 +189,11 @@ services:
       }
     image: travel-plan-payments:1.0.0
     environment:
-      { TLS_PASSWORD: "${TLS_PASSWORD}", APP_ORIGIN: "https://localhost:8443" }
+      {
+        TLS_PASSWORD: "${TLS_PASSWORD}",
+        APP_ORIGIN: "https://localhost:8443",
+        APP_AUTH_URL: "https://dashboard:9444",
+      }
     volumes:
       [payments-runtime:/run/secrets:ro, ./.secrets/certs/payments:/certs:ro]
     depends_on:

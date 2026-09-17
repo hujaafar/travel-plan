@@ -1,14 +1,39 @@
 # Travel Plan
 
+Development and PR checks now run in the [GitHub working repository](https://github.com/hujaafar/travel-plan). The [course Gitea repository](https://learn.reboot01.com/git/hujaafar/travel-plan) is the final delivery destination. See [GitHub workflow and sync policy](docs/GITHUB-WORKFLOW.md).
+
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
-**Current laptop status:** implementation and earlier live checks are saved, but Docker is stopped after the C: drive filled up. Recover disk space before starting. See [verification status](docs/VERIFICATION.md) for completed checks and remaining work.
+**Current verification (17 September):** 78 Java tests, 63 frontend tests and all 29 Linux provisioning tests pass. The local Jenkins review and its strengthened Sonar gate passed with zero detected bugs or vulnerabilities. The rebuilt application runs with two Java replicas per service; live Chrome/Firefox, database/TLS, Ansible workstation deployment, logging and isolated database/Vault restore checks have executed. [PR #1](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/1) is open against protected `main`; the completed implementation stays on `feature/admin-platform` until approval and merge. End-to-end infrastructure HA, scoped Neo4j runtime privileges, owner payment sandbox verification and Git-host PR automation/independent approval remain open. Read the [submission audit](docs/FINAL-AUDIT.md) for final measurements and scope.
 
-The interface uses Scroll Craft's live-surface principles: purposeful navigation, restrained motion, a consistent type and spacing system, and a destination ribbon that reveals the activities, stay, and transport for each stop.
+Unified Atlas carries the requested Scroll Craft design through one consistent product: an Earth-to-destination opening, expanding departure photograph, drawn route, independent ticket, itinerary spread, dimensional gallery and orbital close, followed by administration pages using the same ink, ivory and copper palette. Shared headings, buttons, tables, forms, calendar, settings, help and login follow the same visual system. Native scrolling controls the scenes; mobile uses a swipeable gallery. Motion is always enabled at the user's explicit request, including when an old off choice is stored or the OS requests reduced motion. Direct chapters and skip controls remain available.
+
+## Open the design without Docker
+
+The supplied `Travel-Plan-Preview.html` can be opened directly in Chrome or Firefox. It contains the complete built interface, fonts and photographs, plus fictional sample data. Its sample scope is explained in login, help and the handoff; the topbar preview badge was removed at the user's request. Forms save only in that browser's local storage. It makes no external requests, does not authenticate real users and cannot contact payment providers.
+
+To regenerate and verify the preview from source:
+
+```powershell
+cd dashboard
+npm ci
+npm run build
+python ../scripts/export-preview.py
+node scripts/verify-design.mjs
+node scripts/verify-orbit.mjs
+node scripts/verify-consistency.mjs
+# Requires Playwright's Firefox and its operating-system dependencies:
+$env:DESIGN_BROWSER = 'firefox'
+node scripts/verify-design.mjs
+node scripts/verify-orbit.mjs
+node scripts/verify-consistency.mjs
+```
+
+Preview results are separate from the real-service end-to-end suite below. The design and orbit scripts cover scroll layers, SVG routes, pointer depth, itinerary selection, gallery movement, keyboard focus, mobile swiping, the always-on motion policy, local travel CRUD, empty/single-plan layouts, persistence and CSV export. The consistency suite adds desktop/mobile coverage of all pages, lower Home sections, editors, details, help and sign-in, with paired contact sheets and recorded palette values. Run `node scripts/record-design.mjs` after the tests to record the scroll sequence. See the verification record for which checks have completed on the current revision.
 
 ## Start on this Windows laptop
 
-Prerequisites: Docker Desktop running Linux containers, Python 3.10+, and JDK 17+ with `keytool`. Allow roughly 3 GB for the laptop application profile. Running Jenkins and SonarQube at the same time needs substantially more memory.
+Prerequisites: Docker Desktop running Linux containers, Python 3.10+, and JDK 17+ with `keytool`. Allocate at least 4 GB to Docker with 2 GB of swap for the laptop profile; fresh Vault processes need additional startup headroom. Run Jenkins/Sonar separately on a constrained laptop, or use the isolated GitHub workflow.
 
 ```powershell
 cd "$env:USERPROFILE\Desktop\travel-plan"
@@ -35,7 +60,7 @@ Bootstrap generates per-service TLS certificates, isolated database credentials,
 - **Payments:** Stripe/PayPal gateway CRUD, currency, enablement, sandbox credential status, and provider credential verification. No card data is handled by this application.
 - **Calendar:** month navigation, day selection, and real itinerary dates.
 - **Authentication:** eight-hour revocable server sessions, secure HttpOnly cookies, BCrypt passwords, CSRF checks, login throttling, role-based permissions, and immediate user suspension/deletion enforcement.
-- **Responsive UI:** keyboard-accessible native dialogs, reduced motion support, mobile navigation, accessible labels and focus states.
+- **Responsive UI:** keyboard-accessible native dialogs, mobile navigation, shared page and form treatments, accessible labels and focus states, and direct controls for the always-enabled scroll scenes.
 
 Payment capture, refunds, booking checkout, and signed provider webhooks belong to the next phase. This project administers and verifies payment gateways; it does not pretend to collect money. Supply your own sandbox credentials to run the external provider checks.
 
@@ -47,8 +72,9 @@ flowchart LR
     Gateway -->|HTTPS, round robin| Identity[Identity replicas]
     Gateway -->|HTTPS, round robin| Travel[Travel replicas]
     Gateway -->|HTTPS, round robin| Payments[Payment replicas]
-    Travel -->|HTTPS session verification| Identity
-    Payments -->|HTTPS session verification| Identity
+    Travel -->|HTTPS session verification| PrivateAuth[Private Caddy listener 9444]
+    Payments -->|HTTPS session verification| PrivateAuth
+    PrivateAuth -->|Verified HTTPS, service key| Identity
     Identity -->|TLS| PG[(PostgreSQL)]
     Travel -->|TLS| PG
     Payments -->|TLS| PG
@@ -75,9 +101,11 @@ npm test
 npm run test:e2e
 ```
 
-The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow, reduced motion, and WCAG accessibility rules. Browser tests do not make real payments. They create and clean up their own records.
+The end-to-end suite runs real authenticated CRUD against the local services. It checks navigation, itinerary persistence, stale updates, role restrictions, CSRF, cascading deletion, session revocation, phone overflow and WCAG accessibility rules. The current live run passed seven Chrome scenarios and five Firefox workspace scenarios; the two direct database-fixture cases ran through Chrome on Windows. Browser tests do not make real payments. They create and clean up their own records.
 
 Use `scripts/verify-infrastructure.py` for verified internal TLS, PostgreSQL transport enforcement, and graph projection checks. [VERIFICATION.md](docs/VERIFICATION.md) records the latest observed results and limitations.
+
+See the [feature test map](docs/TEST-MATRIX.md) and [reproducible infrastructure gates](docs/INFRASTRUCTURE-GATES.md). Run `python scripts/pre-submit.py` after installing the declared dependencies to collect local checks and explicitly unverified external gates.
 
 ## Delivery and operations
 

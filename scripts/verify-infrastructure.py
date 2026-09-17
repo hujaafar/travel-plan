@@ -3,12 +3,13 @@
 import json
 from pathlib import Path
 import subprocess
+from process_runtime import run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(args, **kwargs):
-    return subprocess.run(args, cwd=ROOT, check=True, text=True, **kwargs)
+    return run_command(args, cwd=ROOT, check=True, text=True, timeout=60, **kwargs)
 
 
 run(["docker", "compose", "config", "--quiet"])
@@ -44,7 +45,17 @@ try:
     raise AssertionError('Anonymous API access was allowed')
 except urllib.error.HTTPError as error:
     assert error.code == 401, error.code
+    assert 'h3=' not in error.headers.get('Alt-Svc', ''), 'TCP-only ingress advertised an unreachable HTTP/3 endpoint'
 print('PASS gateway TLS and anonymous-access rejection')
+print('PASS TCP-only ingress does not advertise HTTP/3')
+for address, expected in [('https://dashboard:9444/internal/session', 401), ('https://dashboard:8443/internal/session', 404)]:
+    request = urllib.request.Request(address, data=b'{}', headers={'Host': 'dashboard:9444' if ':9444/' in address else 'localhost:8443', 'Content-Type': 'application/json'})
+    try:
+        urllib.request.urlopen(request, context=ctx, timeout=15)
+        raise AssertionError('Internal session endpoint accepted anonymous access')
+    except urllib.error.HTTPError as error:
+        assert error.code == expected, error.code
+print('PASS private session listener requires service authentication; public listener rejects internal paths')
 """
 run(
     [
@@ -99,7 +110,7 @@ assert (
 ), "Neo4j projection is still pending; retry after the graph worker runs"
 print(f"PASS separate runtime roles; graph outbox drained; {travels} saved travels")
 
-plain = subprocess.run(
+plain = run_command(
     [
         "docker",
         "compose",
@@ -113,6 +124,7 @@ plain = subprocess.run(
     cwd=ROOT,
     capture_output=True,
     text=True,
+    timeout=30,
 )
 assert (
     plain.returncode != 0 and "no encryption" in plain.stderr
@@ -128,7 +140,7 @@ graph = run(
         "neo4j",
         "sh",
         "-c",
-        'JAVA_OPTS="-Djavax.net.ssl.trustStore=/certificates/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit" '
+        'JAVA_OPTS="-Xms16m -Xmx96m -XX:ActiveProcessorCount=2 -Djavax.net.ssl.trustStore=/certificates/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit" '
         'cypher-shell -a bolt+s://neo4j:7687 -u neo4j -p "${NEO4J_AUTH#*/}" '
         '"MATCH (t:Travel) RETURN count(t) AS travels;"',
     ],

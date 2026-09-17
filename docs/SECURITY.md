@@ -3,7 +3,7 @@
 Implemented protections:
 
 - Server-side sessions with random 256-bit cookie tokens; only SHA-256 hashes are stored. Cookies are Secure, HttpOnly, SameSite Strict, path `/`, and expire after eight hours.
-- BCrypt work factor 12; no plaintext account passwords in database rows or API responses.
+- BCrypt work factor 12; passwords are validated against its 72-byte UTF-8 limit before hashing. No plaintext account passwords in database rows or API responses.
 - CSRF token and exact-origin checks for all browser mutations. Login is origin-checked too.
 - Roles checked server-side. UI disabling is a convenience, not the authorization boundary.
 - Current session/user status verified through identity for every protected request. Password resets revoke sessions; deleted users lose access immediately.

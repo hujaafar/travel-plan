@@ -18,12 +18,12 @@ async function signIn(page: Page) {
   await page.goto("/");
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Your next chapter starts here.",
-  );
   await expect(
-    page.locator(".metric").first().locator("strong"),
-  ).not.toHaveText("00");
+    page.getByRole("heading", { name: "The departure desk.", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("[data-metric-value]").first()).not.toHaveText(
+    "00",
+  );
 }
 
 test.beforeEach(async ({ page }) => {
@@ -118,6 +118,59 @@ test("itinerary editor creates, edits, searches, and deletes persisted plans", a
     .getByRole("button", { name: "Delete record", exact: true })
     .click();
   await expect(page.getByText("No journeys found")).toBeVisible();
+});
+
+test("session expiry clears open dialogs and the next sign-in starts with fresh workspace data", async ({
+  page,
+}) => {
+  await signIn(page);
+  for (const dialog of ["editor", "detail", "delete"]) {
+    await page
+      .locator(".sidebar")
+      .getByRole("button", { name: "Travel plans", exact: true })
+      .click();
+    if (dialog === "editor") {
+      await page
+        .getByRole("button", { name: "Create travel plan", exact: true })
+        .click();
+      await page
+        .getByLabel("Travel plan name")
+        .fill("Unsaved previous-session draft");
+    } else {
+      await page
+        .getByRole("button", {
+          name: dialog === "detail" ? /^View / : /^Delete /,
+        })
+        .first()
+        .click();
+    }
+    await expect(page.getByRole("dialog")).toBeVisible();
+    // Exercise the same event api.ts emits on an expired authenticated request.
+    // This tests local session cleanup, not the server's expiration policy.
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event("session-expired")),
+    );
+    await expect(page.locator(".login-form")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    const pending: Array<() => void> = [];
+    const dataRoutes = /\/api\/(travels|users|payments)$/;
+    await page.route(dataRoutes, async (route) => {
+      await new Promise<void>((resume) => pending.push(resume));
+      await route.continue();
+    });
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.locator(".app")).toHaveAttribute("data-page", "overview");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator("[data-metric-value]").first()).toHaveText("00");
+    await expect.poll(() => pending.length).toBe(3);
+    pending.forEach((resume) => resume());
+    await expect(page.locator("[data-metric-value]").first()).not.toHaveText(
+      "00",
+    );
+    await page.unroute(dataRoutes);
+  }
 });
 
 test("phone layout, reduced motion, and accessibility", async ({ page }) => {

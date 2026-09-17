@@ -2,6 +2,7 @@ package com.travelplan.payments;
 
 import java.time.Duration;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -13,17 +14,26 @@ public class ProviderClient {
   private final String stripe, paypalId, paypalSecret;
   private final RestClient client;
 
+  @Autowired
   public ProviderClient(
       @Value("${STRIPE_SECRET_KEY:}") String stripe,
       @Value("${PAYPAL_CLIENT_ID:}") String id,
       @Value("${PAYPAL_CLIENT_SECRET:}") String secret) {
+    this(stripe, id, secret, createClient());
+  }
+
+  ProviderClient(String stripe, String id, String secret, RestClient client) {
     this.stripe = stripe;
     this.paypalId = id;
     this.paypalSecret = secret;
+    this.client = client;
+  }
+
+  private static RestClient createClient() {
     var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
     factory.setConnectTimeout(Duration.ofSeconds(5));
     factory.setReadTimeout(Duration.ofSeconds(10));
-    client = RestClient.builder().requestFactory(factory).build();
+    return RestClient.builder().requestFactory(factory).build();
   }
 
   public boolean configured(String provider) {

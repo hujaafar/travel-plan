@@ -7,6 +7,36 @@ export type User = {
   created_at: string;
   csrf?: string;
 };
+
+/** Refresh visible account details without replacing the session's CSRF token. */
+export function reconcileSessionUser(
+  current: User | null,
+  people: User[],
+): User | null {
+  if (!current) return null;
+  const profile = people.find((person) => person.id === current.id);
+  if (
+    !profile ||
+    (profile.name === current.name &&
+      profile.email === current.email &&
+      profile.role === current.role)
+  )
+    return current;
+  return {
+    ...current,
+    name: profile.name,
+    email: profile.email,
+    role: profile.role,
+  };
+}
+declare global {
+  interface Window {
+    TRAVEL_PLAN_ASSETS?: Record<string, string>;
+    TRAVEL_PLAN_PREVIEW?: boolean;
+  }
+}
+export const photo = (key: string) =>
+  window.TRAVEL_PLAN_ASSETS?.[key] || "/images/" + key + ".jpg";
 export type Stop = {
   destination: string;
   country: string;
@@ -42,7 +72,8 @@ export const money = (value: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(value);
 export const date = (
   value: string,

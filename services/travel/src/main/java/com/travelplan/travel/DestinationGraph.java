@@ -3,21 +3,20 @@ package com.travelplan.travel;
 import java.util.*;
 import org.neo4j.driver.*;
 import org.slf4j.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-public class DestinationGraph implements AutoCloseable {
+public class DestinationGraph {
   private final Driver driver;
   private final JdbcTemplate db;
   private static final org.slf4j.Logger log = LoggerFactory.getLogger(DestinationGraph.class);
 
-  public DestinationGraph(JdbcTemplate db, @Value("${NEO4J_PASSWORD}") String password) {
+  public DestinationGraph(JdbcTemplate db, Driver driver) {
     this.db = db;
-    driver = GraphDatabase.driver("bolt+s://neo4j:7687", AuthTokens.basic("neo4j", password));
+    this.driver = driver;
   }
 
   @Scheduled(fixedDelay = 5000)
@@ -71,10 +70,5 @@ public class DestinationGraph implements AutoCloseable {
     } catch (Exception e) {
       log.warn("Destination projection deferred: {}", e.getClass().getSimpleName());
     }
-  }
-
-  @Override
-  public void close() {
-    driver.close();
   }
 }

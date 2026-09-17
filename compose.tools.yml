@@ -2,7 +2,7 @@
 services:
   jenkins:
     profiles: [tools]
-    build: { context: ./infra/jenkins }
+    build: { context: ., dockerfile: infra/jenkins/Dockerfile }
     environment:
       JAVA_OPTS: -Xmx512m -Djenkins.install.runSetupWizard=false -Djavax.net.ssl.trustStore=/certs/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?Run bootstrap.py}

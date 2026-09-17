@@ -6,6 +6,7 @@ CREATE TABLE identity.users(id uuid PRIMARY KEY, name varchar(100) NOT NULL, ema
 CREATE TABLE identity.sessions(token_hash text PRIMARY KEY,user_id uuid NOT NULL REFERENCES identity.users ON DELETE CASCADE,csrf text NOT NULL,expires_at timestamptz NOT NULL);
 CREATE INDEX ON identity.sessions(user_id);
 CREATE TABLE identity.login_attempts(email text PRIMARY KEY,failures int NOT NULL DEFAULT 0,locked_until timestamptz);
+CREATE TABLE identity.bootstrap_state(singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),initialized_at timestamptz NOT NULL DEFAULT now());
 GRANT USAGE ON SCHEMA identity TO travel,payments;
 GRANT REFERENCES(id) ON identity.users TO travel,payments;
 RESET ROLE;

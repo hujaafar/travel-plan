@@ -22,14 +22,23 @@ pipeline {
       steps {
         dir('dashboard') {
           sh 'npm ci'
-          sh 'npx prettier --check src'
+          sh 'npx prettier --check src e2e scripts'
           sh 'npm run build'
-          sh 'npm test'
+          sh 'npm run test:coverage'
           sh 'npm audit --audit-level=moderate'
         }
       }
     }
+    stage('Provisioning unit tests') {
+      steps { sh 'python3 -m unittest discover -s scripts/tests -v' }
+    }
+    stage('Deployment configuration') {
+      steps { sh 'python3 scripts/verify-manifests.py --require-ansible --report work/verification/manifests.json' }
+      post { always { archiveArtifacts artifacts: 'work/verification/manifests.json', allowEmptyArchive: true } }
+    }
     stage('SonarQube analysis') {
+      // Community Build analyzes the main branch only. Keep PR results isolated.
+      when { branch 'main' }
       steps {
         withSonarQubeEnv('travel-plan-sonar') {
           sh 'mvn -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:5.5.0.6356:sonar -Dsonar.projectKey=travel-plan'
@@ -37,25 +46,33 @@ pipeline {
       }
     }
     stage('Quality gate') {
+      when { branch 'main' }
       steps {
         timeout(time: 10, unit: 'MINUTES') {
           waitForQualityGate abortPipeline: true
         }
       }
     }
-    stage('Container build') { steps { sh 'docker compose build' } }
+    stage('Container build') {
+      steps {
+        // Build-only model: PR jobs never need runtime credentials or bootstrap.
+        sh 'docker compose -f compose.build.yml build'
+      }
+    }
     stage('Integration and browsers') {
       when { not { changeRequest() } }
       steps {
         // This stage runs on a dedicated disposable CI agent, never a developer workstation.
         sh 'python3 scripts/bootstrap.py'
         sh 'docker compose -f compose.yml -f compose.local.yml up -d --wait --wait-timeout 240'
+        sh 'python3 scripts/verify-infrastructure.py'
+        sh 'python3 scripts/verify-logging.py --service-logs-only --report work/verification/logging.json'
         dir('dashboard') {
-          sh 'npx playwright install --with-deps chromium firefox'
+          sh 'npx playwright install chromium firefox'
           sh 'PLAYWRIGHT_CHROMIUM=1 npm run test:e2e'
         }
       }
-      post { always { archiveArtifacts artifacts: 'dashboard/playwright-report/**', allowEmptyArchive: true } }
+      post { always { archiveArtifacts artifacts: 'dashboard/playwright-report/**,work/verification/logging.json', allowEmptyArchive: true } }
     }
     stage('Deploy approved main') {
       when { allOf { branch 'main'; expression { params.DEPLOY_STAGING } } }
@@ -69,6 +86,6 @@ pipeline {
     }
   }
   post {
-    always { archiveArtifacts artifacts: 'services/**/target/site/jacoco/**', allowEmptyArchive: true }
+    always { archiveArtifacts artifacts: 'services/**/target/site/jacoco/**,dashboard/coverage/**', allowEmptyArchive: true }
   }
 }

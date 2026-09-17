@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -37,7 +38,7 @@ public class TravelController {
       @Min(1) @Max(10000) int capacity,
       @Size(max = 1000) String description,
       @NotBlank String image,
-      @NotEmpty @Size(max = 30) List<@Valid Stop> stops,
+      @NotEmpty @Size(max = 30) List<@NotNull @Valid Stop> stops,
       @Size(max = 10000) List<UUID> participantIds,
       int version) {}
 
@@ -53,21 +54,29 @@ public class TravelController {
   }
 
   @GetMapping
+  @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
   public List<Map<String, Object>> list() {
     var rows = db.queryForList("select * from travel.travels order by created_at desc");
+    if (rows.isEmpty()) return rows;
+    var stopsByTravel = new HashMap<Object, List<Map<String, Object>>>();
+    for (var record :
+        db.queryForList(
+            "select travel_id,destination,country,activities,accommodation,transportation from"
+                + " travel.stops order by travel_id,position")) {
+      var stop = new HashMap<>(record);
+      var travelId = stop.remove("travel_id");
+      stopsByTravel.computeIfAbsent(travelId, key -> new ArrayList<>()).add(stop);
+    }
+    var peopleByTravel = new HashMap<Object, List<UUID>>();
+    for (var membership :
+        db.queryForList(
+            "select travel_id,user_id from travel.participants order by travel_id,user_id"))
+      peopleByTravel
+          .computeIfAbsent(membership.get("travel_id"), key -> new ArrayList<>())
+          .add((UUID) membership.get("user_id"));
     for (var row : rows) {
-      row.put(
-          "stops",
-          db.queryForList(
-              "select destination,country,activities,accommodation,transportation from travel.stops"
-                  + " where travel_id=? order by position",
-              row.get("id")));
-      row.put(
-          "participantIds",
-          db.queryForList(
-              "select user_id from travel.participants where travel_id=?",
-              UUID.class,
-              row.get("id")));
+      row.put("stops", stopsByTravel.getOrDefault(row.get("id"), List.of()));
+      row.put("participantIds", peopleByTravel.getOrDefault(row.get("id"), List.of()));
       row.put(
           "duration",
           ChronoUnit.DAYS.between(
