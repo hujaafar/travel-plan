@@ -2,7 +2,7 @@
 
 This audit checks the supplied Travel-Plan Part 1 rubric. **The project is not fully complete against the strict wording.** Source implementation, automated evidence and infrastructure/account prerequisites are different statuses.
 
-Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its GitHub workflow](https://github.com/hujaafar/travel-plan/actions/runs/35206087570) completed successfully for both `travel-plan/jenkins` and `travel-plan/live-tests`. PR #1 was merged on 17 September; older documents calling it open are historical snapshots. New fixes and verification gates are in [PR #2](https://github.com/hujaafar/travel-plan/pull/2); its checks apply to its own head revision.
+Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its GitHub workflow](https://github.com/hujaafar/travel-plan/actions/runs/35206087570) completed successfully for both `travel-plan/jenkins` and `travel-plan/live-tests`. PR #1 was merged on 17 September; older documents calling it open are historical snapshots. [PR #2](https://github.com/hujaafar/travel-plan/pull/2) is now merged as well (commit `d8b780f889125b1701c53e089756a6095fb34566`, [checks passed on `main`](https://github.com/hujaafar/travel-plan/actions/runs/35429920193)), and synced to an identical tree on the course Gitea repository. The findings below describe what PR #2 fixed; treat its "Baseline defect fixed in PR #2" rows as now reflecting `main`, not an open PR.
 
 ## Requirement-by-requirement findings
 
@@ -28,7 +28,7 @@ Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its G
 | Unit tests on PRs | GitHub PR workflow launches actual disposable Jenkins/Sonar and a separate live deployment job. Java, dashboard and Python tests run. Unit coverage of helpers is not evidence that every React interaction has a unit test; live E2E provides additional coverage. |
 | Jenkins build/test/deploy | Jenkins runs Java/frontend/provisioning tests and Sonar. The separate live job builds and deploys with Ansible. Persistent staging deployment needs the owner's target and credentials. |
 | Sonar quality and deprecated packages | Baseline job log explicitly reports `QUALITY GATE STATUS: PASSED`. This is not a claim of zero maintainability findings or absence of every dependency vulnerability. Inspect current sanitized Jenkins/Sonar artifacts for full scanner warnings and metrics. |
-| PR workflow and human review | PR automation is implemented; the first implementation was merged under a documented solo-maintainer exception. **No independent human review can be manufactured retroactively.** PR #2 is provided for review and is not merged by this audit. |
+| PR workflow and human review | PR automation is implemented; both PR #1 and PR #2 were merged under a documented, standing solo-maintainer branch-protection policy (0 required approvals, required CI checks unchanged) — see [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md). **No independent human review can be manufactured retroactively;** this remains a disclosed gap against the strict assignment wording, not a satisfied requirement. |
 | Naming/structure/package justification | Domain packages, service modules, shared security code, TypeScript models and package decisions are documented. Controllers combine HTTP and JDBC orchestration; a larger system would benefit from service/repository separation. CamelCase/PascalCase applies to identifiers; descriptive PR titles are a separate convention. |
 | TLS and internal access | Gateway/service/PostgreSQL/Bolt/Vault/provider transport is configured with TLS; internal ports are not published. CI verifies internal transport. Development certificates need a production renewal/trust plan before public deployment. |
 | Secret management | Scoped Vault AppRoles and read-only rendered service configuration exist. Development bootstrap recovery material remains local and excluded from Git. Production custody/rotation/auto-unseal needs an operating environment. |
@@ -56,7 +56,7 @@ Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its G
 
 ## Local verification for these edits
 
-Dashboard build and all 63 frontend tests passed. Python ran 44 tests: 42 passed, two existing JDK-dependent tests skipped. Local Maven stopped before compilation because this workspace could not resolve `repo.maven.apache.org`; Docker is unavailable here. The current PR's Jenkins and live checks are required before claiming the new Java and infrastructure behavior passed.
+Dashboard build and all 63 frontend tests passed. Python ran 44 tests: 42 passed, two existing JDK-dependent tests skipped. Local Maven stopped before compilation in the environment that authored this PR because that workspace could not resolve `repo.maven.apache.org`; Docker was unavailable there. A separate later verification pass, from a workspace with working Maven/npm/Python access, re-ran `mvnw verify` (all Java tests across `common`/`identity`/`travel`/`payments` passed) and `npm run build && npm test` (63/63 dashboard tests passed) against this same branch before merge; Docker still was not running there, so the live/container checks were left to the required GitHub `travel-plan/live-tests` job, which passed on the merged commit.
 
 ## Review walkthrough
 
