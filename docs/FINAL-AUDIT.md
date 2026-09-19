@@ -1,5 +1,6 @@
 # Travel Plan — submission audit
 
+> Current rubric review: see [REQUIREMENTS-AUDIT.md](REQUIREMENTS-AUDIT.md) and [PR #2](https://github.com/hujaafar/travel-plan/pull/2). Measurements below are the September 17 historical snapshot.
 > Delivery update: the owner authorized a documented solo-maintainer merge exception on 17 September 2026. See [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md). Approval and merge statements below are the earlier audit snapshot; use the linked PRs for actual current status.
 
 17 September 2026. **The local application and candidate CI review are verified. Development has moved to [GitHub PR #1](https://github.com/hujaafar/travel-plan/pull/1), with automatic Jenkins/Sonar and live deployment checks required before merge.** Check that PR for the current source revision's result; the local measurements below are historical evidence, not a replacement for current cloud checks. Independent approval, owner payment sandbox verification, supported Neo4j least privilege and infrastructure high availability remain open. This report is not an independent human approval.
