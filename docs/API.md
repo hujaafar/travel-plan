@@ -7,14 +7,14 @@ Base URL: `https://localhost:8443/api`. Requests and responses use JSON. Mutatio
 | POST | `/auth/login` | `{email,password}` → current user and CSRF token; sets session cookie |
 | GET | `/auth/me` | Current account and CSRF token |
 | POST | `/auth/logout` | Revokes the session, clears cookie, 204 |
-| GET | `/users` | Accounts without password hashes; authenticated |
+| GET | `/users` | Accounts without password hashes; ADMIN |
 | POST | `/users` | Create account, 201 `{id}`; ADMIN |
 | PUT | `/users/{uuid}` | Update account; ADMIN |
 | DELETE | `/users/{uuid}` | Delete account and cascade; ADMIN |
 | GET | `/travels` | Saved itineraries, stops, participant IDs, duration and version |
-| POST | `/travels` | Create itinerary, 201 `{id}`; ADMIN or TRAVEL_MANAGER |
-| PUT | `/travels/{uuid}` | Update if supplied version matches; ADMIN or TRAVEL_MANAGER |
-| DELETE | `/travels/{uuid}` | Delete itinerary and enqueue graph deletion; ADMIN or TRAVEL_MANAGER |
+| POST | `/travels` | Create itinerary, 201 `{id}`; ADMIN |
+| PUT | `/travels/{uuid}` | Update if supplied version matches; ADMIN |
+| DELETE | `/travels/{uuid}` | Delete itinerary and enqueue graph deletion; ADMIN |
 | GET | `/travels/graph-status` | `{pending}` graph outbox count |
 | GET | `/payments` | Gateway metadata and configuration status |
 | POST | `/payments` | Create gateway, 201 `{id}`; ADMIN |
@@ -23,6 +23,8 @@ Base URL: `https://localhost:8443/api`. Requests and responses use JSON. Mutatio
 | POST | `/payments/{uuid}/test` | Verify sandbox credentials; ADMIN |
 
 Updates and deletes normally return an empty HTTP 200 body. Standard errors contain `{ "message": "..." }` with 400 for invalid input, 401 for no session, 403 for permission/CSRF/origin rejection, 404 for absent records, 409 for stale/conflicting writes, 429 for login lockout, and 503 when provider credentials are absent. The gateway does not expose `/internal/*` or actuator endpoints.
+
+All business reads and mutations require ADMIN, including graph status. VIEWER and TRAVEL_MANAGER remain assignable account roles for future phases, but have no access to this admin API or dashboard. Login, own-session inspection/logout and private health/service authentication are the necessary exceptions.
 
 ## User payload
 

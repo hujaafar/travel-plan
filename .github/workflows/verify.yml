@@ -101,6 +101,8 @@ jobs:
         run: |
           python scripts/verify-infrastructure.py
           python scripts/verify-logging.py --report work/verification/logging.json
+      - name: Verify safe Ansible reapplication
+        run: python scripts/verify-redeploy.py --inventory work/ci-inventory.ini
       - name: Run live Chrome and Firefox tests
         working-directory: dashboard
         run: |
@@ -109,6 +111,8 @@ jobs:
           npm run test:e2e
       - name: Verify Java replica recovery
         run: python scripts/verify-failover.py --run-failover --report work/verification/failover.json
+      - name: Verify concurrent load and replica distribution
+        run: python scripts/verify-load.py --run-load --report work/verification/load.json
       - name: Diagnose failed application checks
         if: failure()
         run: python scripts/ci-diagnostics.py

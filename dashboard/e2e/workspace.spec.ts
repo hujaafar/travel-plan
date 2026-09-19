@@ -301,7 +301,24 @@ test("API validates roles, CSRF, cascading deletes, stale edits, and revoked ses
     });
     expect(viewerLogin.status()).toBe(200);
     const viewerMe = await viewerLogin.json();
-    expect((await viewer.get("/api/travels")).status()).toBe(200);
+    for (const endpoint of [
+      "/api/users",
+      "/api/travels",
+      "/api/payments",
+      "/api/travels/graph-status",
+    ])
+      expect((await viewer.get(endpoint)).status()).toBe(403);
+    // A role change must take effect for the existing session on every service.
+    expect(
+      (
+        await admin.put("/api/users/" + userId, {
+          headers,
+          data: { ...userInput, role: "TRAVEL_MANAGER", password: "" },
+        })
+      ).status(),
+    ).toBe(200);
+    for (const endpoint of ["/api/users", "/api/travels", "/api/payments"])
+      expect((await viewer.get(endpoint)).status()).toBe(403);
     expect(
       (
         await viewer.delete("/api/travels/" + travelId, {
