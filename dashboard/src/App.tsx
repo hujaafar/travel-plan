@@ -277,7 +277,7 @@ export default function App() {
   const [deleting, setDeleting] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [activeDay, setActiveDay] = useState<number | null>(null);
-  const canTravel = user?.role !== "VIEWER";
+  const canTravel = user?.role === "ADMIN";
   const admin = user?.role === "ADMIN";
   const notify = (message: string) => {
     if (revisionAtRender !== sessionRevision.current) return;
@@ -310,6 +310,8 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }
   const login = (u: User) => {
+    if (u.role !== "ADMIN")
+      throw new Error("Administrator access is required for this workspace.");
     sessionRevision.current += 1;
     setUser(u);
     setCsrf(u.csrf || "");

@@ -6,18 +6,6 @@ import org.junit.jupiter.api.Test;
 
 class SecurityFilterTest {
   @Test
-  void managersCannotManageUsersOrPayments() {
-    assertThat(SecurityFilter.canWrite("TRAVEL_MANAGER", "/api/users")).isFalse();
-    assertThat(SecurityFilter.canWrite("TRAVEL_MANAGER", "/api/payments")).isFalse();
-    assertThat(SecurityFilter.canWrite("TRAVEL_MANAGER", "/api/travels/1")).isTrue();
-  }
-
-  @Test
-  void viewersCannotWrite() {
-    assertThat(SecurityFilter.canWrite("VIEWER", "/api/travels")).isFalse();
-  }
-
-  @Test
   void missingSecretsNeverMatch() {
     assertThat(SecurityFilter.same(null, null)).isFalse();
     assertThat(SecurityFilter.same("abc", "abc")).isTrue();

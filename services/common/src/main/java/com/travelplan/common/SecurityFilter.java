@@ -97,8 +97,8 @@ public class SecurityFilter extends OncePerRequestFilter {
         error(s, 403, "Invalid request token");
         return;
       }
-      if (write && !path.startsWith("/api/auth/") && !canWrite(user.role(), path)) {
-        error(s, 403, "Your role cannot perform this action");
+      if (!path.startsWith("/api/auth/") && !"ADMIN".equals(user.role())) {
+        error(s, 403, "Administrator access is required");
         return;
       }
       chain.doFilter(r, s);
@@ -111,11 +111,6 @@ public class SecurityFilter extends OncePerRequestFilter {
           (System.nanoTime() - start) / 1000000);
       MDC.clear();
     }
-  }
-
-  public static boolean canWrite(String role, String path) {
-    return role.equals("ADMIN")
-        || (role.equals("TRAVEL_MANAGER") && path.startsWith("/api/travels"));
   }
 
   private void error(HttpServletResponse s, int status, String msg) throws IOException {
