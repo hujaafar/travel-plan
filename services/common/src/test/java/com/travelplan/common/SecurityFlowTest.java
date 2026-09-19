@@ -50,6 +50,45 @@ class SecurityFlowTest {
     verifyNoInteractions(chain);
   }
 
+  static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> adminEndpoints() {
+    return java.util.stream.Stream.of("ADMIN", "VIEWER", "TRAVEL_MANAGER", "UNKNOWN")
+        .flatMap(role -> java.util.stream.Stream.of("GET", "HEAD", "POST", "PUT", "DELETE")
+            .flatMap(method -> java.util.stream.Stream.of(
+                "/api/users", "/api/travels", "/api/travels/graph-status", "/api/payments")
+                .map(path -> org.junit.jupiter.params.provider.Arguments.of(role, method, path))));
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.MethodSource("adminEndpoints")
+  void onlyAdministratorsCanReadOrModifyBusinessEndpoints(String role, String method, String path)
+      throws Exception {
+    when(verifier.verify("opaque"))
+        .thenReturn(new SessionUser("id", "Account", "a@example.test", role, "csrf"));
+    var chain = mock(FilterChain.class);
+    var req = request(method, path);
+    filter.doFilter(req, response, chain);
+    if (role.equals("ADMIN")) {
+      assertThat(response.getStatus()).isEqualTo(200);
+      verify(chain).doFilter(req, response);
+    } else {
+      assertThat(response.getStatus()).isEqualTo(403);
+      verifyNoInteractions(chain);
+    }
+  }
+
+  @Test
+  void nonAdministratorsCanStillInspectAndCloseTheirOwnSession() throws Exception {
+    when(verifier.verify("opaque"))
+        .thenReturn(new SessionUser("id", "Viewer", "v@example.test", "VIEWER", "csrf"));
+    for (var path : java.util.List.of("/api/auth/me", "/api/auth/logout")) {
+      var req = request(path.endsWith("logout") ? "POST" : "GET", path);
+      var res = new MockHttpServletResponse();
+      var chain = mock(FilterChain.class);
+      filter.doFilter(req, res, chain);
+      verify(chain).doFilter(req, res);
+    }
+  }
+
   @Test
   void authenticationOutagesFailClosedWithoutReachingControllers() throws Exception {
     when(verifier.verify("opaque")).thenThrow(new IllegalStateException("identity unavailable"));

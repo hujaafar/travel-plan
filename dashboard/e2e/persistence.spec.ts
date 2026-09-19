@@ -111,7 +111,8 @@ test("database enforces session TTL and login throttle recovery", async ({
         `SELECT expires_at > now()+interval '7 hours 59 minutes' AND expires_at <= now()+interval '8 hours' FROM identity.sessions WHERE user_id=${literal(userId)};`,
       ),
     ).toBe("t");
-    expect((await visitor.get("/api/travels")).status()).toBe(200);
+    expect((await visitor.get("/api/auth/me")).status()).toBe(200);
+    expect((await visitor.get("/api/travels")).status()).toBe(403);
     sql(
       `UPDATE identity.sessions SET expires_at=now()-interval '1 second' WHERE user_id=${literal(userId)};`,
     );
