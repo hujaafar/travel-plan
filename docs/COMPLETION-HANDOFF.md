@@ -1,0 +1,66 @@
+# Completion handoff — 20 September 2026
+
+The application has three Java microservices, an Admin dashboard, PostgreSQL/Neo4j, Caddy, Vault, Ansible and PR-triggered Jenkins/Sonar plus real browser/API deployment checks. PR #2 is merged; its main build passed. This follow-up closes frontend component-test and service-specific deployment gaps and makes the remaining payment-account verification executable.
+
+## Added in this follow-up
+
+- Fourteen React component cases exercise non-admin login/session rejection, person creation and role/status updates, confirmed deletion for all three entity types, payment create/edit/provider errors, travel creation/details/search/stale-edit handling and session-expiry cleanup. All 77 frontend tests pass locally. Core `App.tsx` line coverage is 74.4%; overall frontend line coverage is 42.93%. The scroll/WebGL scene is intentionally mocked in component tests and covered separately by real-browser checks. These numbers are not a claim of exhaustive coverage.
+- `infra/ansible/service.yml` deploys or scales only identity, travel or payments. It uses the existing source/configuration and does not rerun database/bootstrap tasks. The new CI gate scales Travel from two to three replicas, checks authenticated reads, restores two, and verifies that other container IDs and start times did not change.
+- `scripts/verify-providers.py` tests both configured sandbox providers through the protected Admin API. Missing records/credentials or provider errors fail the gate. Reports contain provider names/status, not credentials or provider response bodies. It does not charge money.
+- Five additional Python cases guard against missing provider evidence, unrelated container replacement/restart, and accidental workstation redeployment. The local Python suite ran 49 tests: 47 passed, two existing JDK-dependent cases skipped. CI runs the JDK-dependent cases with the installed toolchain.
+- React Testing Library, its DOM peer and jsdom are development-only dependencies for component interaction tests; production bundles do not include them. The local npm audit reported zero vulnerabilities.
+
+Use the follow-up PR's checks for the actual final source revision. Previous green runs do not certify these new changes.
+
+## Start and demonstrate the assignment
+
+Run the existing bootstrap/start instructions in README. Use the base two-replica profile when demonstrating scalability and failover; the laptop override intentionally runs one Java replica each.
+
+After starting the stack:
+
+```bash
+python scripts/verify-infrastructure.py
+python scripts/verify-logging.py --service-logs-only
+python scripts/verify-failover.py --run-failover
+python scripts/verify-load.py --run-load
+```
+
+The load/failover commands temporarily stop one Java replica at a time and restore it. Run them on a disposable review stack, not a production environment. For centralized logging evidence, start the documented monitoring profile and omit `--service-logs-only`.
+
+The GitHub live job now executes full Ansible deployment, repeat deployment with data/session checks, independent Travel scaling, verified transport/logging, Chrome/Firefox, recovery and bounded concurrent load. The Jenkins job runs the unit suites, build, formatting, configuration and Sonar checks.
+
+## Deploy or scale one service
+
+Stage the reviewed source on an already bootstrapped host, then run:
+
+```bash
+ansible-playbook -i infra/ansible/inventory.ini infra/ansible/service.yml \
+  -e service_name=travel -e replica_count=3
+```
+
+Create `inventory.ini` privately from `inventory.example.ini` and set `app_dir` if different from `/opt/travel-plan`. `build_image=true` is the default; use `-e build_image=false` to scale an existing image without rebuilding. This playbook targets the selected service only, using [Ansible Compose dependency and scale controls](https://docs.ansible.com/projects/ansible/latest/collections/community/docker/docker_compose_v2_module.html). It does not provide a zero-downtime rolling image update or remove the shared-database/Identity dependencies.
+
+## Finish the owner sandbox check
+
+1. Obtain a Stripe test key and PayPal sandbox application's client ID/secret from accounts you control.
+2. Put the keys in `secret/payments` using the existing Vault instructions in `OPERATIONS.md`, preserving `DB_PASSWORD` and `SERVICE_KEY`. Do not place them in source, GitHub comments or chat.
+3. Wait for the payments agent to render the properties, then restart the payments Java replicas so Spring reloads them.
+4. Ensure the Admin dashboard contains a Stripe and a PayPal gateway record, then run:
+
+```bash
+python scripts/verify-providers.py
+```
+
+The command verifies Stripe test balance access and PayPal sandbox token issuance. Its report is `work/verification/providers.json`; a missing key produces failure, not a misleading green “skipped” result. The general CI suite deliberately does not receive your provider secrets.
+
+## External prerequisites that remain
+
+| Requirement | What is needed to close it |
+| --- | --- |
+| Owner sandbox success | The owner's credentials and a successful provider report. Mocked HTTP tests cannot replace this. |
+| Neo4j least privilege | A Neo4j offering supporting scoped database privileges, with a restricted runtime user, verified TLS and negative permission tests. The shipped Community deployment still has implied administrative privileges. |
+| Whole-system HA | Provisioned independent failure domains, redundant ingress, database failover and Vault availability/unseal design, then failure/recovery measurements. Multiple Java replicas on one host do not establish this. |
+| Strict service/data independence | A separate architectural migration from cross-schema foreign keys to independently owned data and durable lifecycle/deletion workflows. The current atomic cascade contract remains explicit. |
+| Independent approval | A second person must review the PR. Passing CI and a solo-maintainer merge policy are not an independent human approval. |
+
+Kubernetes is an optional bonus and is not implemented. The project must not be described as satisfying every strict rubric item while the external and architectural rows above remain unresolved. This document provides executable delivery steps, not an invented production certification.

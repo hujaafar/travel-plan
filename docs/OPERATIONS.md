@@ -125,3 +125,7 @@ Use `--no-build` only after building this revision, or `--replicas 2` on a host
 with room for the base replicated topology. A failed stage stops startup and
 preserves volumes. Neo4j's health check establishes Bolt listener readiness;
 `verify-infrastructure.py` separately checks authenticated graph access over TLS.
+
+## Automated owner sandbox verification
+
+After configuring Vault and restarting the payments replicas, run `python scripts/verify-providers.py`. It requires successful Stripe and PayPal sandbox responses and writes a credential-free report under `work/verification/`. It never creates a charge or changes gateway records. See [the completion handoff](COMPLETION-HANDOFF.md) for service-specific Ansible deployment and remaining environment prerequisites.
