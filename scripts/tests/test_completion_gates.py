@@ -62,3 +62,24 @@ class IndependentDeploymentTest(unittest.TestCase):
             with self.assertRaises(deploy.VerificationError):
                 deploy.run(SimpleNamespace())
         replicas.assert_not_called()
+
+
+class SecretReapplicationTest(unittest.TestCase):
+    def test_preserves_external_neo4j_credentials_and_does_not_modify_input(self):
+        from service_secrets import service_configuration
+        existing = {'NEO4J_USERNAME': 'travel_runtime', 'NEO4J_URI': 'neo4j+s://example.test',
+                    'NEO4J_PASSWORD': 'external-fixture', 'DB_PASSWORD': 'old-local'}
+        result = service_configuration('travel', {'travel': 'local-db', 'SERVICE_KEY': 'key',
+                                                  'NEO4J_PASSWORD': 'community-admin'}, existing)
+        self.assertEqual(result['NEO4J_PASSWORD'], 'external-fixture')
+        self.assertEqual(result['NEO4J_USERNAME'], 'travel_runtime')
+        self.assertEqual(result['DB_PASSWORD'], 'local-db')
+        self.assertEqual(existing['DB_PASSWORD'], 'old-local')
+
+    def test_new_local_graph_gets_bootstrap_password_and_provider_keys_survive(self):
+        from service_secrets import service_configuration
+        config = {'travel': 'travel-db', 'payments': 'payments-db', 'SERVICE_KEY': 'key',
+                  'NEO4J_PASSWORD': 'local-graph'}
+        self.assertEqual(service_configuration('travel', config, {})['NEO4J_PASSWORD'], 'local-graph')
+        result = service_configuration('payments', config, {'STRIPE_SECRET_KEY': 'sk_test_fixture'})
+        self.assertEqual(result['STRIPE_SECRET_KEY'], 'sk_test_fixture')
