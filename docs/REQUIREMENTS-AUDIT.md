@@ -1,4 +1,4 @@
-# Assignment audit — 19 September 2026
+# Assignment audit — 20 September 2026
 
 This audit checks the supplied Travel-Plan Part 1 rubric. **The project is not fully complete against the strict wording.** Source implementation, automated evidence and infrastructure/account prerequisites are different statuses.
 
@@ -23,7 +23,7 @@ Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its G
 | Cascading operations | SQL cascades handle stops, memberships and sessions; transaction references become null. Graph outbox handles asynchronous graph deletion. IDs are immutable; no arbitrary primary-key update API is exposed. |
 | Error handling | Validation/conflict/not-found/authentication/provider errors have explicit HTTP responses; exceptions roll back transactional travel updates. Existing tests cover these paths, not every possible input. |
 | Authentication and authorization | BCrypt, hashed server-side session tokens, Secure/HttpOnly/SameSite cookies, CSRF/origin checks, login throttling and current-role verification are implemented. PR #2 adds a full role × method × business-endpoint filter matrix. |
-| Stripe and PayPal | Gateway configuration and protected sandbox credential checks exist, with mocked provider HTTP tests. **Owner sandbox connection tests remain unverified.** Payment collection/refunds/webhooks are outside this Part 1 implementation. |
+| Stripe and PayPal | Gateway configuration, mocked provider HTTP tests and protected live sandbox checks exist. Owner Stripe test balance access and PayPal sandbox token issuance passed with secrets stored only in Vault. No payment operation was performed. |
 | Responsive Chrome and Firefox | Existing live Playwright suite covers both browsers, phone dimensions, CRUD and accessibility. UI changes must pass the current PR suite; physical-device certification is not claimed. |
 | Unit tests on PRs | GitHub PR workflow launches actual disposable Jenkins/Sonar and a separate live deployment job. Java, dashboard and Python tests run. Unit coverage of helpers is not evidence that every React interaction has a unit test; live E2E provides additional coverage. |
 | Jenkins build/test/deploy | Jenkins runs Java/frontend/provisioning tests and Sonar. The separate live job builds and deploys with Ansible. Persistent staging deployment needs the owner's target and credentials. |
@@ -35,7 +35,7 @@ Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its G
 | Least privilege | ADMIN API access, distinct SQL runtime roles, Vault scopes and non-root Java containers are present. **Neo4j Community still uses its administrative account:** full database least privilege is not satisfied. Use a supported Neo4j deployment with scoped database privileges and verify negative permission tests. |
 | Updates and vulnerability maintenance | Renovate and npm audit are configured; no claim that one green build proves all Java, image or OS dependencies are vulnerability-free. |
 | Documentation bonus | API, architecture, schemas, operations, delivery, security and package decisions exist; this audit and the walkthrough below explain remaining limits. |
-| Kubernetes bonus | Not implemented. It is optional and adding unverified YAML would not demonstrate working orchestration or HA. |
+| Kubernetes bonus | Implemented under `infra/kubernetes`: three service replicas, topology spread, HPAs, disruption budgets, default-deny networking, External Secrets/Vault, CloudNativePG and license-gated Neo4j/Vault HA inputs. Kustomize rendering and 54 configuration contracts pass; actual multi-node certification remains external. |
 | Integration/E2E bonus | Implemented in existing live CI. PR #2 adds load/distribution and reapplication evidence. |
 
 ## Changes in PR #2
@@ -50,7 +50,7 @@ Baseline inspected: `62a947db2aca25d2e93e3887fa677c0bb08b0ab6` on `main`. [Its G
 
 - Independent failure domains, redundant ingress and PostgreSQL/Vault/Neo4j availability design, provisioned and tested. Extra replicas on one laptop cannot establish host HA.
 - A Neo4j offering/configuration that supports the required runtime privileges. Do not claim the Community admin account is least privilege.
-- Private Stripe and PayPal sandbox credentials placed through the existing Vault process, followed by successful connection tests. Do not commit or paste them into chat.
+- Deployment of the supplied Kubernetes/HA assets on independent nodes, followed by failure and recovery measurements.
 - Independent review/approval, and any persistent staging target/SSH credentials.
 - If strict database independence is required, replace cross-schema FKs with owned stores, lifecycle events and a deletion/consistency workflow. This changes the current atomic cascading contract and must be designed and tested as an architectural migration, not represented as already implemented.
 
