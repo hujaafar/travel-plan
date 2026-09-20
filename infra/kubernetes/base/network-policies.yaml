@@ -44,13 +44,26 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: travel-data}}
       ports:
         - {protocol: TCP, port: 5432}
-        - {protocol: TCP, port: 7687}
     - to:
         - podSelector: {matchLabels: {app.kubernetes.io/name: identity}}
       ports: [{protocol: TCP, port: 8443}]
     - to:
         - ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]}
       ports: [{protocol: TCP, port: 443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: travel-neo4j-egress, namespace: travel-plan}
+spec:
+  # Neo4j Community has no native scoped-role support, so least privilege for
+  # it is enforced at the network layer: only travel ever queries the graph,
+  # so it is the only workload granted egress to Neo4j's Bolt port.
+  podSelector: {matchLabels: {app.kubernetes.io/name: travel}}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: travel-data}}
+      ports: [{protocol: TCP, port: 7687}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

@@ -110,6 +110,31 @@ assert (
 ), "Neo4j projection is still pending; retry after the graph worker runs"
 print(f"PASS separate runtime roles; graph outbox drained; {travels} saved travels")
 
+# Neo4j Community has no native scoped-role support, so least privilege for it
+# is enforced at the network layer instead: only travel ever calls Neo4j, so
+# identity and payments are not even attached to its Docker network and
+# cannot resolve or reach it on the wire.
+for service in ("identity", "payments"):
+    isolated = run_command(
+        [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            service,
+            "sh",
+            "-c",
+            "curl -sS --max-time 3 http://neo4j:7687",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert isolated.returncode != 0, (
+        f"{service} must not be able to resolve or reach neo4j: {isolated.stderr}"
+    )
+print("PASS identity and payments cannot resolve or reach Neo4j (network-scoped least privilege)")
+
 plain = run_command(
     [
         "docker",
