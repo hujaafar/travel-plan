@@ -842,8 +842,8 @@ export default function App() {
                 <div className="hint">
                   <ShieldCheck size={18} />
                   <p>
-                    Admins manage the workspace. Travel managers curate
-                    journeys. Viewers have read access.
+                    Administrator access is required for this workspace. People
+                    with other roles can still be assigned to travel plans.
                   </p>
                 </div>
               </>

@@ -79,7 +79,7 @@ def temporarily_stop(container, restore_timeout=180, restoration=None):
 
 
 WORKER = r'''
-import http.cookiejar, json, ssl, sys, time, urllib.error, urllib.parse, urllib.request
+import http.cookiejar, json, ssl, sys, time, urllib.error, urllib.parse, urllib.request, uuid
 ctx = ssl.create_default_context(cafile='/certs/ca.crt')
 jar = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ctx), urllib.request.HTTPCookieProcessor(jar))
@@ -108,6 +108,15 @@ for line in sys.stdin:
             status, body, request_id, elapsed = request(path, payload['request_id'])
             shape = isinstance(body, list) if path != '/api/auth/me' else isinstance(body, dict) and bool(body.get('id'))
             result = {'ok':status == 200 and shape and request_id == payload['request_id'], 'status':status, 'request_id':request_id, 'elapsed_ms':elapsed}
+        elif action == 'providers':
+            status, body, request_id, elapsed = request('/api/payments', payload['request_id'])
+            result = {'ok':status == 200 and isinstance(body, list), 'gateways':[
+                {'id':str(row['id']), 'provider':row['provider'], 'configured':bool(row['configured'])}
+                for row in body]}
+        elif action == 'test_provider':
+            gateway_id = str(uuid.UUID(payload['gateway_id']))
+            status, body, request_id, elapsed = request('/api/payments/' + gateway_id + '/test', payload['request_id'], {})
+            result = {'ok':status == 200, 'status':status}
         elif action == 'logout':
             status, body, request_id, elapsed = request('/api/auth/logout', payload['request_id'], {})
             result = {'ok':status in [200,204]}

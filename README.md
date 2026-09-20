@@ -120,3 +120,5 @@ See the [feature test map](docs/TEST-MATRIX.md) and [reproducible infrastructure
 The optional tool stack is in `compose.tools.yml`. It includes Jenkins with authentication, SonarQube with PostgreSQL and a TLS proxy, and a TLS-protected Loki/Grafana monitoring stack. These profiles are deliberately not started by the laptop launcher.
 
 The complete Scroll Craft skill is installed in `.agents/skills/scroll-craft/`. Its local design brief and fingerprint are in `scrollcraft/`.
+
+See [Completion handoff](docs/COMPLETION-HANDOFF.md) for component test coverage, independent service deployment, executable owner sandbox verification and the remaining infrastructure prerequisites.
