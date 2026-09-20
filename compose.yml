@@ -47,7 +47,7 @@ services:
       timeout: 3s
       start_period: 90s
       retries: 12
-    networks: [backend]
+    networks: [graph]
     restart: unless-stopped
   vault:
     # A fresh Linux image can exceed 192 MB during Vault initialization.
@@ -177,7 +177,7 @@ services:
         postgres: { condition: service_healthy },
         travel-agent: { condition: service_healthy },
       }
-    networks: [backend]
+    networks: [backend, graph]
     deploy: { replicas: 2, resources: { limits: { memory: 384M } } }
     restart: unless-stopped
   payments:
@@ -218,6 +218,7 @@ services:
     restart: unless-stopped
 networks:
   backend: { internal: true }
+  graph: { internal: true }
   egress: {}
 volumes:
   pg-data: {}

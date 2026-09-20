@@ -12,6 +12,7 @@ Implemented protections:
 - Protected internal session verification, never routed by the public gateway.
 - TLS at the gateway, Java services, PostgreSQL, Neo4j, Vault and external providers. PostgreSQL rejects non-TLS TCP connections.
 - Separate runtime schema permissions, non-login schema owners, and non-root Java containers.
+- Network-scoped least privilege for Neo4j: it has no native fine-grained roles in the Community edition (that requires a commercially licensed Enterprise/Aura tier, which this project does not hold), so instead only `travel` — the one service that ever queries the graph — is attached to Neo4j's Docker/Kubernetes network. `identity` and `payments` cannot resolve or reach it at all, verified live in `scripts/verify-infrastructure.py`.
 - Vault AppRoles can read only their own service configuration. Secrets are not built into Docker images or committed.
 - Request-ID sanitization and propagation; no password or cookie logging. Security headers reject framing and limit content sources.
 - No real payment collection or card storage; provider testing uses sandbox credentials.
