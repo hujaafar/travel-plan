@@ -1,6 +1,6 @@
 # Completion handoff — 20 September 2026
 
-The application has three Java microservices, an Admin dashboard, PostgreSQL/Neo4j, Caddy, Vault, Ansible and PR-triggered Jenkins/Sonar plus real browser/API deployment checks. PR #2 is merged; its main build passed. This follow-up closes frontend component-test and service-specific deployment gaps and makes the remaining payment-account verification executable.
+The application has three Java microservices, an Admin dashboard, PostgreSQL/Neo4j, Caddy, Vault, Ansible, Kubernetes readiness assets and PR-triggered Jenkins/Sonar plus real browser/API deployment checks. GitHub PR #5 and course Gitea PR #4 are merged with identical source trees; the required Jenkins/Sonar and live-deployment jobs passed.
 
 ## Added in this follow-up
 

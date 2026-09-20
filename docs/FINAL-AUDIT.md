@@ -1,9 +1,9 @@
 # Travel Plan — submission audit
 
-> Current rubric review: see [REQUIREMENTS-AUDIT.md](REQUIREMENTS-AUDIT.md). Both [PR #1](https://github.com/hujaafar/travel-plan/pull/1) and [PR #2](https://github.com/hujaafar/travel-plan/pull/2) are merged into `main` on GitHub and synced to an identical commit on the course Gitea repository. Measurements below the next paragraph are the September 17 historical snapshot, predating PR #2.
+> Current rubric review: see [REQUIREMENTS-AUDIT.md](REQUIREMENTS-AUDIT.md). GitHub PRs through [PR #5](https://github.com/hujaafar/travel-plan/pull/5) are merged and synced to an identical source tree on the course Gitea repository. Measurements below the next paragraph are the September 17 historical snapshot; use the current PR run and completion handoff for final status.
 > Delivery update: the owner authorized a documented, standing solo-maintainer branch-protection policy on 17 September 2026, applied to both merges. See [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md). Approval and merge statements below are the earlier audit snapshot; use the linked PRs for actual current status.
 
-17 September 2026 (historical snapshot; see above for current merge state). **The local application and candidate CI review are verified.** The local measurements below are historical evidence, not a replacement for current cloud checks on the merged `main`. Independent approval, owner payment sandbox verification, supported Neo4j least privilege and infrastructure high availability remain open. This report is not an independent human approval.
+17 September 2026 (historical snapshot; see above for current merge state). **The local application and candidate CI review are verified.** The local measurements below are historical evidence, not a replacement for current cloud checks on the merged `main`. Owner Stripe and PayPal sandbox checks passed on 20 September. Independent approval, licensed Neo4j runtime least privilege and deployed multi-node HA certification remain open. This report is not an independent human approval.
 
 ## Executed checks
 
@@ -52,21 +52,21 @@ The first identity probe took 30.87 seconds with eight failed requests. An unpub
 | Complete travel details | Multiple destinations, dates, inclusive duration, activities, accommodation and transport persist correctly. |
 | Cascades and consistency | Real PostgreSQL rollback, stale edit rejection, child/member cascades, null historical transaction references, ordered graph relationships, duplicate outbox replay and graph deletion convergence passed. |
 | Authentication/authorization | BCrypt, server sessions, secure cookies, CSRF/origin checks, RBAC and revocation passed. Stored eight-hour/fifteen-minute boundaries and fixture-expiry enforcement were tested; those durations were not waited out in wall-clock time. |
-| Stripe and PayPal | Sandbox gateway administration and protected credential-test endpoints exist, with HTTP contract unit tests. Owner sandbox credentials have not been supplied or verified. Payment capture/refunds/webhooks are phase two. |
+| Stripe and PayPal | Sandbox gateway administration, HTTP contract tests and protected live credential checks are implemented. Owner Stripe test balance and PayPal sandbox token checks passed through the Admin API with secrets held in Vault. No charge, capture or refund was performed. |
 | Responsive Chrome and Firefox | Current live browser checks passed. Earlier broader portable consistency/orbit evidence is historical; current portable design was rerun. Firefox WebGL and physical phones are not certified. |
 | Feature unit tests | 78 Java, 63 frontend and 29 provisioning tests passed. See TEST-MATRIX.md; coverage is not proof of all possible behavior. |
 | PR workflow, review and approved merges | Superseded by [SOLO-MAINTAINER-DELIVERY.md](SOLO-MAINTAINER-DELIVERY.md): [PR #1](https://github.com/hujaafar/travel-plan/pull/1) and [PR #2](https://github.com/hujaafar/travel-plan/pull/2) are both merged into `main` on GitHub and synced to the course Gitea repository. GitHub still enforces `travel-plan/jenkins`, `travel-plan/live-tests` and administrator compliance; required approvals are now a standing 0 for both hosts because no second collaborator exists. No independent human approval has occurred or is claimed. |
 | TLS, private networking and Vault | Live transport checks passed; scoped AppRoles and separate SQL runtime roles are in use. The development CA is not a public-domain certificate. |
-| Least privilege | Application RBAC, SQL roles and Vault scopes verified. Neo4j Community's implied administrative privileges remain a gap. |
-| High availability | Incomplete: PostgreSQL, Neo4j, Vault, ingress and Docker host are single points of failure. Requires independent failure domains and a supported clustered Neo4j offering. |
+| Least privilege | Application RBAC, SQL roles, Vault scopes and Kubernetes service/network policies are verified as configuration. Local Neo4j Community still has implied administrative privileges; the production template and runbook require a scoped Enterprise role. |
+| High availability | Kubernetes application, PostgreSQL and Vault HA inputs are implemented and render successfully. Production certification remains incomplete until they run across independent failure domains with licensed Neo4j clustering and measured recovery. |
 | Maintenance/packages | Renovate, audit gates and package/asset decision records supplied. Java/container/OS vulnerability review remains ongoing work. |
-| Bonuses | Schema/API/architecture/operations documentation, real integration/E2E tests, measured failover and isolated backup restores supplied. Kubernetes is not implemented. |
+| Bonuses | Schema/API/architecture/operations documentation, real integration/E2E tests, measured failover, isolated backup restores and validated Kubernetes/production-operator assets are supplied. |
 
 ## Remaining owner/environment gates
 
 1. Require successful current GitHub checks and obtain independent human approval. GitHub now runs and publishes the required Jenkins and live-deployment checks automatically; their current status must be inspected on the PR. No reviewer is currently assigned. After review, synchronize the approved result back to the course repository without claiming the old local build as a new PR result.
-2. Supply owner sandbox secrets through the documented Vault paths, then execute both protected Stripe/PayPal connection tests. Do not place keys in Git or chat.
-3. Provide a Neo4j deployment supporting scoped runtime privileges and a reviewed HA environment with redundant database, Vault and ingress services on independent hosts. No license, paid account or public domain was activated.
+2. Deploy the supplied HA assets on independent Kubernetes nodes with approved DNS, certificates and storage classes, then record failure and recovery results.
+3. Provide a licensed Neo4j deployment supporting the documented scoped runtime role. No license or paid account was activated.
 4. Establish off-device protected backups, rotation, recovery targets and production capacity testing. Local lists are still unbounded; pagination and catalogue-scale load testing remain before large deployments.
 
 The earlier Docker uninstall lost the old data disk. Current checks use newly initialized project data; previous records were not recovered. The latest private backups are outside Docker under `.secrets/backups/` and are excluded from deliverables. Read DOCKER-RECHECK.md before any runtime repair.
