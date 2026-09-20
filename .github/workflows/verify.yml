@@ -103,6 +103,8 @@ jobs:
           python scripts/verify-logging.py --report work/verification/logging.json
       - name: Verify safe Ansible reapplication
         run: python scripts/verify-redeploy.py --inventory work/ci-inventory.ini
+      - name: Verify independent service deployment and scaling
+        run: python scripts/verify-service-deploy.py --inventory work/ci-inventory.ini
       - name: Run live Chrome and Firefox tests
         working-directory: dashboard
         run: |

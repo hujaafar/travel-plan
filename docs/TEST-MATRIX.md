@@ -36,3 +36,9 @@ python3 scripts/pre-submit.py --browser firefox --output work/submission-firefox
 Windows can run the Java, frontend, Chrome and Compose checks. Select an installed Ansible executable with `--ansible`; the Ansible controller and POSIX permission checks require Linux. `--offline` uses cached Maven dependencies. Reports and per-stage logs are written under ignored `work/` and record failed or unverified checks explicitly. `--skip-browser` is useful for a code-only rerun, but records the skipped browser evidence.
 
 On a running dedicated test stack, `--live` adds authenticated infrastructure, selected-browser E2E and logging gates. Add `--run-failover` only for the documented two-replica test environment. See [infrastructure gates](INFRASTRUCTURE-GATES.md) for exact prerequisites, restoration behavior and evidence limits. The runner never issues independent approval or marks an unverified deployment ready for submission.
+
+## Completion follow-up
+
+`App.test.tsx` adds fourteen component cases for Admin-only entry, session cleanup, person create/edit, user/travel/payment deletion confirmation, payment create/edit/provider failures, and travel create/details/search/stale-edit behavior. API I/O and the separately browser-tested overview scene are mocked; the workspace and editors are real React components rendered in jsdom. Both `.test.ts` and `.test.tsx` files run in Vitest and are classified as test code in Sonar.
+
+`test_completion_gates.py` verifies that absent/failed sandbox providers cannot pass and that service-only deployment rejects unrelated container recreation/restarts. Live CI runs `verify-service-deploy.py` against the real disposable stack. Owner provider verification remains separate from mocked tests and requires `verify-providers.py` with credentials configured privately in Vault.

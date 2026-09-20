@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from secret_permissions import prepare_secret_storage, publish_runtime_exports
 from bootstrap_runtime import wait_for_postgres
 from process_runtime import run_command
+from service_secrets import service_configuration
 
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
@@ -166,17 +167,14 @@ for path, data in [
         if e.code != 400:
             raise
 for service in ["identity", "travel", "payments"]:
-    data = {"DB_PASSWORD": config[service], "SERVICE_KEY": config["SERVICE_KEY"]}
-    if service == "identity":
-        data["ADMIN_PASSWORD"] = config["ADMIN_PASSWORD"]
-    if service == "travel":
-        data["NEO4J_PASSWORD"] = config["NEO4J_PASSWORD"]
-    # Preserve provider credentials when rerunning bootstrap.
+    # Preserve owner provider and external Neo4j configuration on reapplication.
     try:
-        data = {**api("secret/data/" + service, token=token)["data"]["data"], **data}
+        existing = api("secret/data/" + service, token=token)["data"]["data"]
     except urllib.error.HTTPError as e:
         if e.code != 404:
             raise
+        existing = {}
+    data = service_configuration(service, config, existing)
     api("secret/data/" + service, {"data": data}, token)
     api(
         "sys/policies/acl/" + service,

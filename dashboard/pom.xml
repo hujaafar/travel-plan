@@ -13,8 +13,8 @@
   <properties>
     <sonar.sources>src</sonar.sources>
     <sonar.tests>src</sonar.tests>
-    <sonar.exclusions>**/*.test.ts</sonar.exclusions>
-    <sonar.test.inclusions>**/*.test.ts</sonar.test.inclusions>
+    <sonar.exclusions>**/*.test.ts,**/*.test.tsx</sonar.exclusions>
+    <sonar.test.inclusions>**/*.test.ts,**/*.test.tsx</sonar.test.inclusions>
     <sonar.javascript.lcov.reportPaths>coverage/lcov.info</sonar.javascript.lcov.reportPaths>
   </properties>
 </project>
