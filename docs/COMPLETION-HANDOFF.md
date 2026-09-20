@@ -41,27 +41,23 @@ ansible-playbook -i infra/ansible/inventory.ini infra/ansible/service.yml \
 
 Create `inventory.ini` privately from `inventory.example.ini` and set `app_dir` if different from `/opt/travel-plan`. `build_image=true` is the default; use `-e build_image=false` to scale an existing image without rebuilding. This playbook targets the selected service only, using [Ansible Compose dependency and scale controls](https://docs.ansible.com/projects/ansible/latest/collections/community/docker/docker_compose_v2_module.html). It does not provide a zero-downtime rolling image update or remove the shared-database/Identity dependencies.
 
-## Finish the owner sandbox check
+## Owner sandbox check
 
-1. Obtain a Stripe test key and PayPal sandbox application's client ID/secret from accounts you control.
-2. Put the keys in `secret/payments` using the existing Vault instructions in `OPERATIONS.md`, preserving `DB_PASSWORD` and `SERVICE_KEY`. Do not place them in source, GitHub comments or chat.
-3. Wait for the payments agent to render the properties, then restart the payments Java replicas so Spring reloads them.
-4. Ensure the Admin dashboard contains a Stripe and a PayPal gateway record, then run:
+The owner Stripe test key and PayPal sandbox credentials are stored privately in local Vault. Both provider checks passed through the protected Admin API on 20 September 2026. No payment was collected. Re-run the credential-free verifier after rotating keys:
 
 ```bash
 python scripts/verify-providers.py
 ```
 
-The command verifies Stripe test balance access and PayPal sandbox token issuance. Its report is `work/verification/providers.json`; a missing key produces failure, not a misleading green “skipped” result. The general CI suite deliberately does not receive your provider secrets.
+The command verifies Stripe test balance access and PayPal sandbox token issuance. Its report is `work/verification/providers.json`; a missing key produces failure, not a misleading green “skipped” result. The general CI suite deliberately does not receive provider secrets.
 
 ## External prerequisites that remain
 
 | Requirement | What is needed to close it |
 | --- | --- |
-| Owner sandbox success | The owner's credentials and a successful provider report. Mocked HTTP tests cannot replace this. |
 | Neo4j least privilege | A Neo4j offering supporting scoped database privileges, with a restricted runtime user, verified TLS and negative permission tests. The shipped Community deployment still has implied administrative privileges. |
 | Whole-system HA | Provisioned independent failure domains, redundant ingress, database failover and Vault availability/unseal design, then failure/recovery measurements. Multiple Java replicas on one host do not establish this. |
 | Strict service/data independence | A separate architectural migration from cross-schema foreign keys to independently owned data and durable lifecycle/deletion workflows. The current atomic cascade contract remains explicit. |
 | Independent approval | A second person must review the PR. Passing CI and a solo-maintainer merge policy are not an independent human approval. |
 
-Kubernetes is an optional bonus and is not implemented. The project must not be described as satisfying every strict rubric item while the external and architectural rows above remain unresolved. This document provides executable delivery steps, not an invented production certification.
+Kubernetes application and production-operator templates are implemented under `infra/kubernetes`, with a certification runbook in `docs/PRODUCTION-HA.md`. The project must not be described as satisfying every production claim until those assets run on independent infrastructure and the remaining external rows above are verified. This document provides executable delivery steps, not an invented production certification.

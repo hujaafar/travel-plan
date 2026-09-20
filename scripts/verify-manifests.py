@@ -71,6 +71,52 @@ def check_models(runtime, local, tools, build):
     return checks
 
 
+def check_kubernetes_assets():
+    checks = []
+
+    def require(condition, label):
+        if not condition:
+            raise VerificationError(label)
+        checks.append(label)
+
+    base = ROOT / "infra" / "kubernetes" / "base"
+    production = ROOT / "infra" / "kubernetes" / "production"
+    required = {
+        "namespace.yaml", "service-accounts.yaml", "services.yaml",
+        "dashboard-config.yaml", "deployments.yaml", "availability.yaml",
+        "network-policies.yaml", "kustomization.yaml",
+    }
+    require(required <= {path.name for path in base.glob("*.yaml")}, "Kubernetes base contains every required application manifest")
+    rendered_source = "\n".join(path.read_text(encoding="utf-8") for path in sorted(base.glob("*.yaml")))
+    require(len(re.findall(r"(?m)^kind: Deployment$", rendered_source)) == 4,
+            "Kubernetes base declares four application deployments")
+    require(rendered_source.count("replicas: 3") >= 4, "Every Kubernetes application deployment starts with three replicas")
+    require(rendered_source.count("topology.kubernetes.io/zone") >= 4, "Kubernetes workloads spread across zones")
+    require(rendered_source.count("kubernetes.io/hostname") >= 4, "Kubernetes workloads spread across hosts")
+    require(rendered_source.count("readOnlyRootFilesystem: true") >= 4, "Kubernetes application filesystems are read-only")
+    require(rendered_source.count("allowPrivilegeEscalation: false") >= 4, "Kubernetes containers deny privilege escalation")
+    require(rendered_source.count("automountServiceAccountToken: false") >= 8, "Kubernetes workloads do not receive unused API tokens")
+    require(len(re.findall(r"(?m)^kind: PodDisruptionBudget$", rendered_source)) == 4,
+            "Kubernetes workloads have disruption budgets")
+    require(len(re.findall(r"(?m)^kind: HorizontalPodAutoscaler$", rendered_source)) == 3,
+            "Java services have autoscaling policies")
+    require(len(re.findall(r"(?m)^kind: NetworkPolicy$", rendered_source)) >= 6 and "name: default-deny" in rendered_source,
+            "Kubernetes networking is default-deny with explicit paths")
+    require("kind: Secret\n" not in rendered_source and "stringData:" not in rendered_source,
+            "Kubernetes base contains no committed secret payloads")
+    require(all((production / name).is_file() for name in
+                ("postgres-cluster.yaml", "vault-values.yaml", "external-secrets.yaml", "neo4j-values.yaml")),
+            "Production HA operator inputs cover PostgreSQL, Vault, external secrets and Neo4j")
+    require("instances: 3" in (production / "postgres-cluster.yaml").read_text(encoding="utf-8"),
+            "Production PostgreSQL template has three instances")
+    require("replicas: 3" in (production / "vault-values.yaml").read_text(encoding="utf-8"),
+            "Production Vault template has three Raft replicas")
+    neo4j = (production / "neo4j-values.yaml").read_text(encoding="utf-8")
+    require("minimumClusterSize: 3" in neo4j and 'acceptLicenseAgreement: "no"' in neo4j,
+            "Neo4j cluster template requires explicit license acceptance")
+    return checks
+
+
 def run(args):
     report = {"started_at":datetime.now(timezone.utc).isoformat(), "passed":False,
               "scope":"Configuration contracts and optional Ansible syntax; not a running deployment or Jenkins execution",
@@ -85,6 +131,7 @@ def run(args):
             tools = compose(["compose.yml", "compose.tools.yml"], empty, ("tools", "monitoring"))
             build = compose(["compose.build.yml"], empty)
             report["checks"] += check_models(runtime, local, tools, build)
+        report["checks"] += check_kubernetes_assets()
         jenkins = (ROOT / "Jenkinsfile").read_text()
         for name in ("SonarQube analysis", "Quality gate"):
             if not re.search(r"when\s*\{\s*branch\s+'main'\s*\}", stage(jenkins, name)):
