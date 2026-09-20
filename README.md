@@ -4,7 +4,7 @@ Development and PR checks now run in the [GitHub working repository](https://git
 
 A Java microservices project with a working travel administration dashboard. Built for the first phase of the Travel-Plan assignment: environment, user management, itineraries, payment-method administration, security, and delivery tooling.
 
-**Requirement audit (19 September):** [PR #2](https://github.com/hujaafar/travel-plan/pull/2) is merged, fixing the Admin-only access mismatch and adding concurrent-load/redeployment evidence identified in the [requirement-by-requirement audit](docs/REQUIREMENTS-AUDIT.md). The merged `main` revision passed [Jenkins/Sonar and live deployment checks](https://github.com/hujaafar/travel-plan/actions/runs/35429920193) on both GitHub and the synced [course Gitea repository](https://learn.reboot01.com/git/hujaafar/travel-plan/pulls/2). Whole-system HA, strict database independence, Neo4j runtime least privilege, owner payment sandbox checks and independent human review remain incomplete; see [SOLO-MAINTAINER-DELIVERY.md](docs/SOLO-MAINTAINER-DELIVERY.md) for why the last one is a standing, disclosed limitation rather than an oversight. Earlier September 17 reports are historical measurements, not certification of every current requirement.
+**Requirement audit (20 September):** The final application revision passed [Jenkins/Sonar and live deployment checks](https://github.com/hujaafar/travel-plan/actions/runs/35493634703), including safe Ansible reapplication, independent service scaling, browser tests, failover and concurrent load distribution. Owner Stripe and PayPal sandbox checks also pass locally through the protected Admin API with credentials held in Vault. Kubernetes and multi-node HA assets are provided under `infra/kubernetes`; a real production certification still requires independent nodes, a licensed Neo4j cluster and a second human reviewer.
 
 Unified Atlas carries the requested Scroll Craft design through one consistent product: an Earth-to-destination opening, expanding departure photograph, drawn route, independent ticket, itinerary spread, dimensional gallery and orbital close, followed by administration pages using the same ink, ivory and copper palette. Shared headings, buttons, tables, forms, calendar, settings, help and login follow the same visual system. Native scrolling controls the scenes; mobile uses a swipeable gallery. Motion is always enabled at the user's explicit request, including when an old off choice is stored or the OS requests reduced motion. Direct chapters and skip controls remain available.
 
@@ -87,7 +87,7 @@ flowchart LR
 
 The three services have separate database schemas and runtime roles. PostgreSQL is the source of truth; an idempotent, retryable outbox projects destination relationships into Neo4j. Cross-schema foreign keys intentionally provide atomic cascading behavior for this teaching project. The tradeoff and a future separation path are documented in [architecture](docs/ARCHITECTURE.md).
 
-This is a **single-host development deployment**, not a claim of production high availability. The gateway, PostgreSQL, Neo4j Community instance, and local Vault node are single points of failure. Production requires redundant ingress, PostgreSQL failover/backups, an appropriate Neo4j cluster offering, and a multi-node Vault deployment.
+This Compose profile is a **single-host development deployment**, not a claim of production high availability. The repository now includes a three-replica Kubernetes application base, disruption budgets, autoscaling, default-deny networking, CloudNativePG and Vault HA inputs, External Secrets integration and a deliberately license-gated Neo4j Enterprise cluster template. See [Kubernetes readiness](infra/kubernetes/README.md) and [production HA certification](docs/PRODUCTION-HA.md). Actual HA still requires deployment across independent nodes and measured failure tests.
 
 ## Verification
 
@@ -116,6 +116,8 @@ See the [feature test map](docs/TEST-MATRIX.md) and [reproducible infrastructure
 - [Jenkins, SonarQube, PR review, Ansible, and deployment](docs/DELIVERY.md)
 - [Security decisions and production work](docs/SECURITY.md)
 - [Package choices and asset credits](docs/DECISIONS.md)
+- [Kubernetes and multi-node HA readiness](infra/kubernetes/README.md)
+- [Production HA and Neo4j least-privilege plan](docs/PRODUCTION-HA.md)
 
 The optional tool stack is in `compose.tools.yml`. It includes Jenkins with authentication, SonarQube with PostgreSQL and a TLS proxy, and a TLS-protected Loki/Grafana monitoring stack. These profiles are deliberately not started by the laptop launcher.
 
